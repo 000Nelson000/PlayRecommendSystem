@@ -2,3 +2,6 @@
 .ipynb_checkpoints
 # Byte-compiled 
 __pycache__/
+
+# data
+rec-a-sketch/
