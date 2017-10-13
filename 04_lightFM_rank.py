@@ -176,3 +176,66 @@ plot_patk(iterarray, test_patk,
 plt.tight_layout();
 
 #%%
+
+# =============================================================================
+# Learning to Rank + Side information 
+# =============================================================================
+
+# Need to hstack item_features
+eye = sp.eye(item_features.shape[0], item_features.shape[0]).tocsr()
+item_features_concat = sp.hstack((eye, item_features))
+item_features_concat = item_features_concat.tocsr().astype(np.float32)
+
+## New Object function
+def objective_wsideinfo(params):
+    # unpack
+    epochs, learning_rate,\
+    no_components, item_alpha,\
+    scale = params
+    
+    user_alpha = item_alpha * scale
+    model = lightfm.LightFM(loss='warp',
+                    random_state=2016,
+                    learning_rate=learning_rate,
+                    no_components=no_components,
+                    user_alpha=user_alpha,
+                    item_alpha=item_alpha)
+    model.fit(train, epochs=epochs,
+              item_features=item_features_concat,
+              num_threads=4, verbose=True)
+    
+    patks = lightfm.evaluation.precision_at_k(model, test,
+                                              item_features=item_features_concat,
+                                              train_interactions=None,
+                                              k=5, num_threads=3)
+    mapatk = np.mean(patks)
+    # Make negative because we want to _minimize_ objective
+    out = -mapatk
+    # Weird shit going on
+    if np.abs(out + 1) < 0.01 or out < -1.0:
+        return 0.0
+    else:
+        return out
+
+#%% 
+## optimial params ###        
+#        Maximimum p@k found: 0.04610
+#Optimal parameters:
+epochs =  192
+learning_rate= 0.06676184785227865
+no_components= 86
+item_alpha =  0.0005563892936299544
+scale =  0.6960826359109953
+learning_rate = 0.06676184785227865 ## 
+user_alpha = item_alpha * scale
+
+
+model = lightfm.LightFM(loss='warp', 
+                        random_state=2016,
+                        learning_rate = learning_rate,
+                        no_components = no_components,
+                        user_alpha = user_alpha,
+                        item_alpha = item_alpha)
+model.fit(train, epochs = epochs,
+          item_features= item_features_concat,num_threads=4,verbose=True)
+
