@@ -218,6 +218,9 @@ def objective_wsideinfo(params):
         return out
 
 #%% 
+# =============================================================================
+# Fun with features embedding
+# =============================================================================
 ## optimial params ###        
 #        Maximimum p@k found: 0.04610
 #Optimal parameters:
@@ -239,3 +242,95 @@ model = lightfm.LightFM(loss='warp',
 model.fit(train, epochs = epochs,
           item_features= item_features_concat,num_threads=4,verbose=True)
 
+# %% 
+idx = dv.vocabulary_['tag_tiltbrush'] + item_features.shape[0]
+def cosine_similarity(vec, mat):
+    sim = vec.dot(mat.T)
+    matnorm = np.linalg.norm(mat, axis=1)
+    vecnorm = np.linalg.norm(vec)
+    return np.squeeze(sim / matnorm / vecnorm)
+
+tilt_vec = model.item_embeddings[[idx], :]
+item_representations = item_features_concat.dot(model.item_embeddings)
+sims = cosine_similarity(tilt_vec, item_representations)
+
+import requests
+def get_thumbnails(row, idx_to_mid, N=10):
+    thumbs = []
+    mids = []
+    for x in np.argsort(-row)[:N]:
+        response = requests.get('https://sketchfab.com/i/models/{}'\
+                                .format(idx_to_mid[x])).json()
+        thumb = [x['url'] for x in response['thumbnails']['images']
+                 if x['width'] == 200 and x['height']==200]
+        if not thumb:
+            print('no thumbnail')
+        else:
+            thumb = thumb[0]
+        thumbs.append(thumb)
+        mids.append(idx_to_mid[x])
+    return thumbs, mids
+
+from IPython.display import display, HTML
+
+def display_thumbs(thumbs, mids, N=5):
+    thumb_html = "<a href='{}' target='_blank'>\
+                  <img style='width: 160px; margin: 0px; \
+                  float: left; border: 1px solid black;' \
+                  src='{}' /></a>"
+    images = ''
+    for url, mid in zip(thumbs[0:N], mids[0:N]):
+        link = 'http://sketchfab.com/models/{}'.format(mid)
+        images += thumb_html.format(link, url)
+    display(HTML(images))
+display_thumbs(*get_thumbnails(sims, idx_to_mid))
+#%% 
+# =============================================================================
+# tag suggestion
+# =============================================================================
+idx = 900
+mid = idx_to_mid[idx]
+def display_single(mid):
+    """Display thumbnail for a single model"""
+    response = requests.get('https://sketchfab.com/i/models/{}'\
+                            .format(mid)).json()
+    thumb = [x['url'] for x in response['thumbnails']['images']
+             if x['width'] == 200 and x['height']==200][0]
+    thumb_html = "<a href='{}' target='_blank'>\
+                  <img style='width: 200px; margin: 0px; \
+                  float: left; border: 1px solid black;' \
+                  src='{}' /></a>"
+    link = 'http://sketchfab.com/models/{}'.format(mid)
+    display(HTML(thumb_html.format(link, thumb)))
+
+display_single(mid)
+
+# Make mapper to map from from feature index to feature name
+idx_to_feat = {v: k for (k, v) in dv.vocabulary_.items()}
+print('Tags:')
+for i in item_features.getrow(idx).indices:
+    print('- {}'.format(idx_to_feat[i]))
+    
+
+# Indices of all tag vectors
+tag_indices = set(v for (k, v) in dv.vocabulary_.items()
+                  if k.startswith('tag_'))
+# Tags that are already present
+filter_tags = set(i for i in item_features.getrow(idx).indices)
+
+item_representation = item_features_concat[idx, :].dot(model.item_embeddings)
+sims = cosine_similarity(item_representation, model.item_embeddings)
+
+suggested_tags = []
+i = 0
+recs = np.argsort(-sims)
+n_items = item_features.shape[0]
+while len(suggested_tags) < 10:
+    offset_idx = recs[i] - n_items
+    if offset_idx in tag_indices\
+       and offset_idx not in filter_tags:
+        suggested_tags.append(idx_to_feat[offset_idx])
+    i += 1
+print('Suggested Tags:')
+for t in suggested_tags:
+    print('- {}'.format(t))
