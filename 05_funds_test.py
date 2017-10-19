@@ -13,6 +13,7 @@ import pypyodbc
 import numpy as np 
 import lightfm
 import copy 
+import pickle
 from lightfm import LightFM
 from lightfm.evaluation import auc_score,recall_at_k,precision_at_k
 
@@ -216,15 +217,15 @@ def learning_curve(model, train, test, eval_train,
     model: LightFM 
         reccommender model     
     train_patk: float
-        precision at k in training(eval_train) data 
+        precision at k in (eval_)training data 
     test_patk: float
         precision at k in testing data
     train_ratk: float
-        recall at k in training(eval_train) data
+        recall at k in (eval_)training data
     test_ratk: float
         recall at k in testing data
     train_rrk: float
-        reciprocal_rank at k in training data
+        reciprocal_rank at k in (eval_)training data
     test_rrk: float
         reciprocal_rank at k in test data
     """
@@ -337,7 +338,60 @@ def eval_popularity(popularity,eval_train,test,method='recall'):
         pass
     
     return recall
+
+def objective(params,method = 'precision'):
+    """obective function we want to minimize w.r.t hyperparameters
     
+    parameters
+    ----------
+    params: tuple of 4, float
+        epochs,learning rate, no_compnents, alpha 
+    method: 'precision'(default) or 'recall'
+        metric we want to minimize
+    returns
+    -------
+    objective value we want to minimze 
+    """
+    epochs,learning_rate,\
+    no_components, alpha = params
+    
+    user_alpha = alpha
+    item_alpha = alpha
+    
+    model = LightFM(loss = 'warp',
+                    random_state = 2017,
+                    learning_rate = learning_rate,
+                    no_components = no_components,
+                    user_alpha = user_alpha,
+                    item_alpha = item_alpha)
+    
+    model.fit(train, epochs=epochs, num_threads=4,
+              verbose=True)
+    if method == 'precision':
+        ## precision at k
+        score_array = lightfm.evaluation.precision_at_k(model,
+                                                   test,
+                                                   train_interactions=None,
+                                                   k=5,
+                                                   num_threads=4)
+    elif method == 'recall':
+        ## recall at k 
+        score_array = lightfm.evaluation.recall_at_k(model,
+                                                test,
+                                                train_interactions=None,
+                                                k=5,
+                                                num_threads=4)
+    else:
+        raise  
+    ## we want to min
+    out = -np.mean(score_array)
+    
+    # handle some weird numerical shit result
+    if np.abs(out + 1) < 0.01 or out < -1.0:
+        return 0.0
+    else:
+        return out
+        
 #def grid_search_learning_curve(base_model, train, test, eval_train,param_grid,
 #                               user_index=None, atk=5, epochs=range(2, 40, 2)):        
 #    """grid search 
@@ -469,4 +523,40 @@ learning_curve(model,train,test,eval_train,iterarray=[1,10,15,20],k=10)
 
 
 #%% 
+
+# =============================================================================
+# optimizing Hyperparameter with scikit-optimize (linux only)
+# =============================================================================
+from skopt import forest_minimize
+
+space = [(1, 100), # epochs
+         (10**-4, 1.0, 'log-uniform'), # learning_rate
+         (20, 200), # no_components
+         (10**-6, 10**-1, 'log-uniform'), # alpha
+        ]
+
+res_fm = forest_minimize(objective, space, 
+                         n_calls=250,
+                         random_state=0,
+                         verbose=True)
+
+print('Maximimum p@k found: {:6.5f}'.format(-res_fm.fun))
+print('Optimal parameters:')
+params = ['epochs', 'learning_rate', 'no_components', 'alpha']
+for (p, x_) in zip(params, res_fm.x):
+    print('{}: {}'.format(p, x_))
+""" optimize params 
+Maximimum p@k found: 0.03424
+Optimal parameters:
+epochs: 98
+learning_rate: 0.059126434145345366
+no_components: 31
+alpha: 0.0006973742463233035    
+"""
+## save varaibale(res_fm) 
+## -- train take several hours in my laptop
+with open('./funds/res_fm_no_feat.pickle',mode='wb') as f:
+    pickle.dump(res_fm,f)
+    
+#%%
 
