@@ -26,18 +26,35 @@ def threshold_interaction(df,rowname,colname,row_min=1):
     ----------
     df: Dataframe
          purchasing dataframe         
-         
     rowname: 
         name of user(Uid)
     colname: 
         name of item(Iid)
-        
+    row_min:
+        min numbers        
     """
+    n_rows = df[rowname].unique().shape[0]
+    n_cols = df[colname].unique().shape[0]
+    sparsity = float(df.shape[0]) / float(n_rows*n_cols) * 100
+    print('Starting interactions info')
+    print('Number of rows: {}'.format(n_rows))
+    print('Number of cols: {}'.format(n_cols))
+    print('Sparsity: {:4.2f}%'.format(sparsity))
+
     row_counts = df.groupby(rowname)[colname].count()
 #    col_counts = df.groupby(colname)[rowname]
     uids = row_counts[row_counts > row_min].index.tolist() # lists of uids purchasing item greater than row_min
     
     df2 = df[df[rowname].isin(uids)]
+    
+    n_rows2 = df2[rowname].unique().shape[0]
+    n_cols2 = df2[colname].unique().shape[0]
+    sparsity2 = float(df2.shape[0]) / float(n_rows2*n_cols2) * 100
+    print('Ending interactions info')
+    print('Number of rows: {}'.format(n_rows2))
+    print('Number of columns: {}'.format(n_cols2))
+    print('Sparsity: {:4.2f}%'.format(sparsity2))
+    
     return df2
 
 def df_to_spmatrix(df, rowname, colname):
@@ -459,12 +476,29 @@ df_user = pd.read_csv('./funds/user_features.csv',encoding='cp950')
 # =============================================================================
 # user- item iteaction from purchasing history
 # =============================================================================
-df_gt2 = threshold_interaction(df_inter,'身分證字號','基金代碼')
-purchased_ui, userid_to_idx, \
-idx_to_userid, itemid_to_idx,idx_to_itemid = df_to_spmatrix(df_inter,'身分證字號','基金代碼')
+
+
+### there are some fundids in df_inter not exists in df_item 
+fundids_df_items = df_item['基金代碼'].as_matrix() # 1d array
+fundids_df_inter = df_inter['基金代碼'].unique() # 1d array
+fundids = np.intersect1d(fundids_df_inter,fundids_df_items) # 1d array
+
+### arrange purchasing data which fundid exist in fundids
+## (exclude data which is not exist in fundids)
+df_inter = df_inter.loc[df_inter['基金代碼'].isin(fundids)]
+## user who bought at least two items
+df_gt2 = threshold_interaction(df_inter,'身分證字號','基金代碼') # 
+### 
+purchased_ui1, userid_to_idx1, \
+idx_to_userid1, itemid_to_idx1,idx_to_itemid1= df_to_spmatrix(df_inter,'身分證字號','基金代碼')
+
 train,test, user_idxs = train_test_split(purchased_ui,split_count=1,fraction=0.2)
 
 
+purchased_ui, userid_to_idx, \ 
+idx_to_userid, itemid_to_idx,idx_to_itemid = df_to_spmatrix(df_gt2,'身分證字號','基金代碼')
+train,test, user_idxs = train_test_split(purchased_ui,split_count=1,fraction=0.2)
+# data - 30,191 * 2,154
 
 #%%
 # =============================================================================
@@ -559,4 +593,26 @@ with open('./funds/res_fm_no_feat.pickle',mode='wb') as f:
     pickle.dump(res_fm,f)
     
 #%%
+
+# =============================================================================
+# sideinfo : features -- users, items
+# =============================================================================
+#userids = df_gt2['身分證字號'].unique() # 
+fundids = idx_to_itemid.values()    
+df_item = df_item.loc[df_item['基金代碼'].isin(fundids)]
+#df_user = df_user.loc[df_user['身分證字號'].isin(userids)] #
+item_f = df_item.copy()
+item_f[['cluster','sharpe','自今年以來報酬率(%)']]
+
+#from sklearn.preprocessing import 
+def z_score(df,colname):
+    return (df[colname] - df[colname].mean()) / (df[colname].std(ddof=0))
+
+item_sharpe_z = z_score(item_f,'sharpe')
+item_return_z = z_score(item_f,'自今年以來報酬率(%)')
+
+item_f['sharpe_z'] = item_sharpe_z
+item_f['return_by_year_z'] = item_return_z
+
+item_f
 
