@@ -28,10 +28,10 @@ class KNNmodel:
             mat = self.inter
         elif self.kind =='ibcf':
             mat = self.inter.T
-            
+                    
         rows_sum = mat.getnnz(axis=1)  # 
         ab = mat.dot(mat.T) # mat x t(mat)
-        ab = ab.astype('float32')
+        ab = ab.astype('float32')        
         # for rows
         aa = np.repeat(rows_sum, ab.getnnz(axis=1))
         # for columns
@@ -40,7 +40,7 @@ class KNNmodel:
         similarities = ab.copy()
         similarities.data /= (aa + bb - ab.data)
         similarities.setdiag(0)
-        
+        similarities = similarities.tocsr()
         sparsity = float(similarities.nnz / mat.shape[0]**2) * 100
         print('similarity matrix built ({}), sparsity: {:.2f} %'\
               .format(self.kind,sparsity))
@@ -69,21 +69,26 @@ class KNNmodel:
         sim = self.sim.tolil()
         
         if self.kind == 'ubcf':
-            top_K_users = np.argsort(sim.A,axis=1)[:,:-topK-1:-1] 
-            for user in range(top_K_users.shape[0]):
-                pred[user, ] = sim[user,top_K_users[user]]\
-                    .dot(rating[top_K_users[user,:]]) # lil
-                pred[user,] /= np.sum(np.abs(sim[user,]))
+            for user in range(pred.shape[0]):
+                topk_user = np.argsort(sim.getrow(user).data)[:-topK-1:-1]
+                pred[user,:] = sim[user,topk_user].dot(\
+                    rating[topk_user,:])
+                pred[user,:] /= np.sum(np.abs(sim[user,:]))
+            pred = pred.tocsr()
             self.rating = pred
+                
             
         elif self.kind =='ibcf':
-            top_K_items = np.argsort(sim.A,axis=0)[:,:-topK-1:-1]
-            for item in range(top_K_items.shape[0]):
-                pred[:,item] = rating[:,top_K_items[item,:]].dot(sim[top_K_items[item], item])
+            for item in range(pred.shape[1]):
+                topk_item = np.argsort(sim.getrow(item).data)[:-topK-1:-1]
+                pred[:,item] = rating[:,topk_item].dot(\
+                    sim[topk_item,item])
                 pred[:,item] /= np.sum(np.abs(sim[:,item]))
+            pred = pred.tocsr()
             self.rating = pred
+
             
-    def predict(self):
+    def predict(self,uidx):
         pass
     
     def popular_items(self):
@@ -125,5 +130,5 @@ if __name__ == "__main__":
     
     
     purchased_ui, userid_to_idx, \
-    idx_to_userid, itemid_to_idx,idx_to_itemid = df_to_spmatrix(df_gt2,'身分證字號','基金代碼')
-    train,test, user_idxs = train_test_split(purchased_ui,split_count=1,fraction=0.2)
+    idx_to_userid, itemid_to_idx,idx_to_itemid = rec_helper.df_to_spmatrix(df_gt2,'身分證字號','基金代碼')
+    train,test, user_idxs = rec_helper.train_test_split(purchased_ui,split_count=1,fraction=0.2)
