@@ -17,7 +17,7 @@ import pickle
 from lightfm import LightFM
 from lightfm.evaluation import auc_score,recall_at_k,precision_at_k
 
-
+from sklearn.preprocessing import binarize
 #%% 
 def threshold_interaction(df,rowname,colname,row_min=1):
     """limit interaction(u-i) dataframe greater than row_min numbers 
@@ -41,7 +41,8 @@ def threshold_interaction(df,rowname,colname,row_min=1):
     print('Number of cols: {}'.format(n_cols))
     print('Sparsity: {:4.2f}%'.format(sparsity))
 
-    row_counts = df.groupby(rowname)[colname].count()
+    df_groups = df.groupby([rowname,colname])[colname].count()
+    row_counts = df_groups.groupby(rowname).count()
 #    col_counts = df.groupby(colname)[rowname]
     uids = row_counts[row_counts > row_min].index.tolist() # lists of uids purchasing item greater than row_min
     
@@ -99,7 +100,8 @@ def df_to_spmatrix(df, rowname, colname):
     J = df[colname].apply(map_ids, args=[cid_to_idx]).as_matrix()
     V = np.ones(I.shape[0])    
     interactions = sp.coo_matrix((V,(I,J)),dtype='int32')
-    interactions = interactions.tocsr()
+    interactions = binarize(interactions) # also coo convert to csr 
+#    interactions = interactions.tocsr()
     
     return interactions,rid_to_idx,idx_to_rid,cid_to_idx,idx_to_cid
 
@@ -492,13 +494,13 @@ df_gt2 = threshold_interaction(df_inter,'身分證字號','基金代碼') #
 purchased_ui1, userid_to_idx1, \
 idx_to_userid1, itemid_to_idx1,idx_to_itemid1= df_to_spmatrix(df_inter,'身分證字號','基金代碼')
 
-train,test, user_idxs = train_test_split(purchased_ui,split_count=1,fraction=0.2)
+#train,test, user_idxs = train_test_split(purchased_ui,split_count=1,fraction=0.2)
 
 
-purchased_ui, userid_to_idx, \ 
+purchased_ui, userid_to_idx, \
 idx_to_userid, itemid_to_idx,idx_to_itemid = df_to_spmatrix(df_gt2,'身分證字號','基金代碼')
 train,test, user_idxs = train_test_split(purchased_ui,split_count=1,fraction=0.2)
-# data - 30,191 * 2,154
+
 
 #%%
 # =============================================================================
