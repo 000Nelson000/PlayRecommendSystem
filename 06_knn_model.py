@@ -61,39 +61,87 @@ class KNNmodel:
             print('similarity matrix build (ibcf), sparsity: {:.2f} %'\
                   .format(sparsity))
         
+    def _replace_nan_in_csr(self,X):
+        X_coo = sp.coo_matrix(X)
+        row = X_coo.row
+        col = X_coo.col
+        data = X_coo.data
+        idx = 0
+        for i,j,v in zip(X_coo.row,X_coo.col,X_coo.data):            
+            if (np.isnan(v)):
+                data[idx] = 0
+            idx+=1
+        X_coo = sp.coo_matrix((data,(row,col)))
+        return X_coo.tocsr()
     
-    def fit(self,topK=20):
+    def fit(self,topK=20,normalize=True):
                 
         pred = sp.lil_matrix((self.inter.shape))
-        rating = self.inter.tolil()
-        sim = self.sim.tolil()
+        rating = self.inter
+        sim = self.sim
+        widgets=[Percentage(),Bar()] # progress bar 
         
         if self.kind == 'ubcf':
+            pbar = ProgressBar(widgets=widgets,maxval=pred.shape[0]).start()
+            topK_users = np.argsort(sim.A,axis=1)[:,:-topK-1:-1]  ## memory cost a lot if users
             for user in range(pred.shape[0]):
-                topk_user = np.argsort(sim.getrow(user).data)[:-topK-1:-1]
+                topk_user = topK_users[user,:] # shape:(topK,)
                 pred[user,:] = sim[user,topk_user].dot(\
                     rating[topk_user,:])
-                pred[user,:] /= np.sum(np.abs(sim[user,:]))
-            pred = pred.tocsr()
-            self.rating = pred
-                
+#                pred[user,:] /= np.sum(np.abs(sim[user,:])) # extremely slow
+                pbar.update(user+1)
+            if normalize:
+                np.seterr(divide='ignore',invalid='ignore') # suppress warning message 
+                pred /= sim.sum(axis=1)
+                                            
             
         elif self.kind =='ibcf':
+            topK_items = np.argsort(sim.A,axis=1)[:,:-topK-1:-1] #            
+            
+            pbar = ProgressBar(widgets=widgets,maxval=pred.shape[1]).start()
             for item in range(pred.shape[1]):
-                topk_item = np.argsort(sim.getrow(item).data)[:-topK-1:-1]
+                topk_item = topK_items[item,:] # shape: (topK,)
                 pred[:,item] = rating[:,topk_item].dot(\
                     sim[topk_item,item])
-                pred[:,item] /= np.sum(np.abs(sim[:,item]))
-            pred = pred.tocsr()
-            self.rating = pred
-
+#                pred[:,item] /= np.sum(np.abs(sim[:,item])) # extremely slow
+                pbar.update(item+1)
             
-    def predict(self,uidx):
-        pass
+            if normalize:
+#                print(repr(pred))
+                np.seterr(divide='ignore',invalid='ignore') # suppress warning message 
+                pred /= sim.sum(axis=0)
+                
+                
+        print('\nhandling nan data...')
+        pred = self._replace_nan_in_csr(pred)
+        pbar.finish()
+        rows = pred.shape[0]
+        cols = pred.shape[1]
+        sparsity = float( pred.getnnz()/ (rows*cols) )*100
+        print('# of rows : {}'.format(rows))
+        print('numbers of cols: {}'.format(cols))
+        print('sparsity of rating: {:.2f} %'.format(sparsity))
+        print('save into *.rating attribute...')
+        pred = sp.csr_matrix(pred)
+        self.rating = pred                
+        
+            
+    def predict(self,uids,topN=10):
+        """predict topN recommended items for uids 
+        
+        params
+        ======
+        uids: (array)
+        """
+        if self.kind in ('ibcf','ubcf'):
+            topNarray = np.argsort(self.rating[uids,:].A)[:,-topN-1:-1]
+            return topNarray
+        
+        
     
     def popular_items(self):
         pass
-    def evaluate(self):
+    def evaluate(self,method = 'precision'):
         pass
 # %%    
 # =============================================================================
@@ -104,6 +152,7 @@ if __name__ == "__main__":
     import numpy as np 
     import scipy.sparse as sp
     from sklearn.metrics.pairwise import cosine_similarity
+    from progressbar import ProgressBar, Percentage,Bar
     
     import rec_helper
     
