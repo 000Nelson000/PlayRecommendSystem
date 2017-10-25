@@ -70,7 +70,7 @@ class KNNmodel:
         inter_coo = self.inter.tocoo()
         ij = zip(inter_coo.row,inter_coo.col)
         intersect_ij = set(ij)
-        for i,j,v in zip(X_coo.row,X_coo.col,X_coo.data):            
+        for i,j,v in tqdm(zip(X_coo.row,X_coo.col,X_coo.data)):
             if (np.isnan(v)):
                 data[idx] = 0
             if remove:
@@ -117,18 +117,18 @@ class KNNmodel:
         pred = sp.lil_matrix((self.inter.shape))
         rating = self.inter
         
-        widgets=[Percentage(),Bar()] # progress bar 
+#        widgets=[Percentage(),Bar()] # progress bar 
         
         if self.kind == 'ubcf':
             sim = self.sim
-            pbar = ProgressBar(widgets=widgets,maxval=pred.shape[0]).start()
+#            pbar = ProgressBar(widgets=widgets,maxval=pred.shape[0]).start()
             topK_users = np.argsort(sim.A,axis=1)[:,:-topK-1:-1]  ## memory cost a lot if num_of users is very large
-            for user in range(pred.shape[0]):
+            for user in tqdm(range(pred.shape[0])):
                 topk_user = topK_users[user,:] # shape:(topK,)
                 pred[user,:] = sim[user,topk_user].dot(\
                     rating[topk_user,:])
 #                pred[user,:] /= np.sum(np.abs(sim[user,:])) # extremely slow
-                pbar.update(user+1)
+#                pbar.update(user+1)
             if normalize:
                 np.seterr(divide='ignore',invalid='ignore') # suppress warning message 
                 pred /= sim.sum(axis=1)
@@ -137,13 +137,13 @@ class KNNmodel:
         elif self.kind =='ibcf':
             sim = self.sim
             topK_items = np.argsort(sim.A,axis=1)[:,:-topK-1:-1] #memory cost a lot            
-            pbar = ProgressBar(widgets=widgets,maxval=pred.shape[1]).start()
-            for item in range(pred.shape[1]):
+#            pbar = ProgressBar(widgets=widgets,maxval=pred.shape[1]).start()
+            for item in tqdm(range(pred.shape[1])):
                 topk_item = topK_items[item,:] # shape: (topK,)
                 pred[:,item] = rating[:,topk_item].dot(\
                     sim[topk_item,item])
 #                pred[:,item] /= np.sum(np.abs(sim[:,item])) # extremely slow
-                pbar.update(item+1)
+#                pbar.update(item+1)
             
             if normalize:
 #                print(repr(pred))
@@ -151,19 +151,19 @@ class KNNmodel:
                 pred /= sim.sum(axis=0)
                 
         elif self.kind =='popular':
-            pbar = ProgressBar(widgets=widgets,maxval=pred.shape[0]).start()
+#            pbar = ProgressBar(widgets=widgets,maxval=pred.shape[0]).start()
             num_of_sell_per_item = np.array(self.inter.sum(axis=0).tolist()[0]) # np-array
             topK_pop_indices = np.argsort(num_of_sell_per_item)[:-topK-1:-1]
             topK_num_of_pop =  num_of_sell_per_item[topK_pop_indices]
             if normalize:
                 topK_num_of_pop = topK_num_of_pop/ np.sum(topK_num_of_pop)
             
-            for user in range(pred.shape[0]):
+            for user in tqdm(range(pred.shape[0])):
                 pred[user,topK_pop_indices] = topK_num_of_pop
-                pbar.update(user+1)
+#                pbar.update(user+1)
             
         
-        pbar.finish()        
+#        pbar.finish()        
         print('{} rating matrix built...'.format(self.kind))
         print('\nhandling nan data...')
         pred = self._replace_nan_in_csr(pred,remove=remove)
@@ -226,11 +226,12 @@ class KNNmodel:
         if method == 'precision':            
             test_lil = test.tolil()
             prec_array = np.zeros(pred_all.shape[0])
-            
+            num_of_test_data = 0
             for user,items in enumerate(test_lil.rows):
                 prec_array[user] = len(np.intersect1d(items,pred_all[user,])) / len(pred_all[user,])
-                
-            return prec_array
+                if items != []:
+                    num_of_test_data += 1
+            return np.sum(prec_array)/num_of_test_data
                     
                 
         if method == 'recall':
@@ -257,7 +258,8 @@ if __name__ == "__main__":
     import numpy as np 
     import scipy.sparse as sp
     from sklearn.metrics.pairwise import cosine_similarity
-    from progressbar import ProgressBar, Percentage,Bar
+#    from progressbar import ProgressBar, Percentage,Bar
+    from tqdm import tqdm
     
     import rec_helper
     
@@ -317,6 +319,9 @@ if __name__ == "__main__":
 
     predall_p = model_p.predict(uids,topN=10)
     model_p.evaluate(predall_p,test,method='recall') # 20.57 %
+    
+    # %%
+    temp_p = model_p.evaluate(predall_p,test,method='precision')
 #%%
     
 # =============================================================================
