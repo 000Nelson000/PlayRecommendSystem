@@ -61,7 +61,9 @@ class KNNmodel:
             print('similarity matrix build (ibcf), sparsity: {:.2f} %'\
                   .format(sparsity))
         
-    def _replace_nan_in_csr(self,X,remove):
+    def _replace_purcashed_items(self,X):
+        """replace items which user have already bought
+        """
         X_coo = sp.coo_matrix(X)
         row = X_coo.row
         col = X_coo.col
@@ -70,12 +72,14 @@ class KNNmodel:
         inter_coo = self.inter.tocoo()
         ij = zip(inter_coo.row,inter_coo.col)
         intersect_ij = set(ij)
-        for i,j,v in tqdm(zip(X_coo.row,X_coo.col,X_coo.data)):
-            if (np.isnan(v)):
+        
+        for i,j,v in tqdm(zip(X_coo.row,X_coo.col,X_coo.data),
+                          total = len(X_coo.data)):
+#            if (np.isnan(v)):
+#                data[idx] = 0
+#            if remove:
+            if (i,j) in intersect_ij:
                 data[idx] = 0
-            if remove:
-                if (i,j) in intersect_ij:
-                    data[idx] = 0
             idx+=1
         X_coo = sp.coo_matrix((data,(row,col)))
         
@@ -105,7 +109,7 @@ class KNNmodel:
         normalize: (True/False)
             normalize similarity w.r.t item/user
         remove: (True/False)
-            remove rating(scoring) in purchased items 
+            remove rating(scoring) which user bought 
         
         attributes
         ==========
@@ -117,41 +121,50 @@ class KNNmodel:
         pred = sp.lil_matrix((self.inter.shape))
         rating = self.inter
         
-#        widgets=[Percentage(),Bar()] # progress bar 
         
         if self.kind == 'ubcf':
             sim = self.sim
-#            pbar = ProgressBar(widgets=widgets,maxval=pred.shape[0]).start()
+
             topK_users = np.argsort(sim.A,axis=1)[:,:-topK-1:-1]  ## memory cost a lot if num_of users is very large
-            for user in tqdm(range(pred.shape[0])):
+            for user in tqdm(range(pred.shape[0]),unit='users'):                
                 topk_user = topK_users[user,:] # shape:(topK,)
+                #top k users for a given user , but pretty slow if numofusers large
+#                topk_user = np.argsort(sim[:,user].A)[0,:-topK-1:-1]
                 pred[user,:] = sim[user,topk_user].dot(\
                     rating[topk_user,:])
 #                pred[user,:] /= np.sum(np.abs(sim[user,:])) # extremely slow
-#                pbar.update(user+1)
+
             if normalize:
-                np.seterr(divide='ignore',invalid='ignore') # suppress warning message 
-                pred /= sim.sum(axis=1)
+                eps = 1e-5
+#                np.seterr(divide='ignore',invalid='ignore') # suppress warning message 
+                denominator = sim.sum(axis=1) 
+                zero_idx = np.where(np.isclose(denominator,0)) # which is zero in denominator is not allowd
+                denominator[zero_idx[0],] = np.full((len(zero_idx[0]),1),eps) 
+                pred /= denominator
                                             
             
         elif self.kind =='ibcf':
             sim = self.sim
-            topK_items = np.argsort(sim.A,axis=1)[:,:-topK-1:-1] #memory cost a lot            
-#            pbar = ProgressBar(widgets=widgets,maxval=pred.shape[1]).start()
-            for item in tqdm(range(pred.shape[1])):
-                topk_item = topK_items[item,:] # shape: (topK,)
+#            topK_items = np.argsort(sim.A,axis=1)[:,:-topK-1:-1] #memory cost a lot            
+            for item in tqdm(range(pred.shape[1]),unit='items'):
+                #top k items for a give item
+                topk_item = np.argsort(sim[item,].A)[0,:-topK-1:-1]
+                #
+#                topk_item = topK_items[item,:] # shape: (topK,)
                 pred[:,item] = rating[:,topk_item].dot(\
                     sim[topk_item,item])
 #                pred[:,item] /= np.sum(np.abs(sim[:,item])) # extremely slow
-#                pbar.update(item+1)
+
             
             if normalize:
-#                print(repr(pred))
-                np.seterr(divide='ignore',invalid='ignore') # suppress warning message 
-                pred /= sim.sum(axis=0)
+#                np.seterr(divide='ignore',invalid='ignore') # suppress warning message 
+                eps = 1e-5
+                denominator = sim.sum(axis=0)
+                zero_idx = np.where(np.isclose(denominator,0)) # which is zero 
+                denominator[zero_idx] = np.full((1,len(zero_idx[0])),eps) 
+                pred /= denominator
                 
         elif self.kind =='popular':
-#            pbar = ProgressBar(widgets=widgets,maxval=pred.shape[0]).start()
             num_of_sell_per_item = np.array(self.inter.sum(axis=0).tolist()[0]) # np-array
             topK_pop_indices = np.argsort(num_of_sell_per_item)[:-topK-1:-1]
             topK_num_of_pop =  num_of_sell_per_item[topK_pop_indices]
@@ -160,14 +173,18 @@ class KNNmodel:
             
             for user in tqdm(range(pred.shape[0])):
                 pred[user,topK_pop_indices] = topK_num_of_pop
-#                pbar.update(user+1)
+        
+        elif self.kind == 'ubcf_fs':
+            pass
+            
             
         
-#        pbar.finish()        
         print('{} rating matrix built...'.format(self.kind))
-        print('\nhandling nan data...')
-        pred = self._replace_nan_in_csr(pred,remove=remove)
-        
+        if remove:
+            print('\nhandling nan data...')
+            pred = self._replace_purcashed_items(pred)
+        if not remove:
+            pred = sp.csr_matrix(pred)
         rows = pred.shape[0]
         cols = pred.shape[1]
         sparsity = float( pred.getnnz()/ (rows*cols) )*100
@@ -231,7 +248,11 @@ class KNNmodel:
                 prec_array[user] = len(np.intersect1d(items,pred_all[user,])) / len(pred_all[user,])
                 if items != []:
                     num_of_test_data += 1
-            return np.sum(prec_array)/num_of_test_data
+#            return np.sum(prec_array)/num_of_test_data
+            self.precision = np.sum(prec_array)/ num_of_test_data
+            print("\n-------------")
+            print("model: {},\ntopN: {}".format(self.kind, self.topN))
+            print("precision: {:.2f} %".format(self.precision * 100))
                     
                 
         if method == 'recall':
@@ -243,7 +264,7 @@ class KNNmodel:
                     score += 1
             self.recall = score/len(nonzero_rowsets)
             print("\n-------------")
-            print("model: {}, topN: {}".format(self.kind, self.topN))
+            print("model: {},\ntopN: {}".format(self.kind, self.topN))
             print("recall:{:.2f} %".format(score/len(test_coo.data) * 100))
         
             
@@ -295,14 +316,14 @@ if __name__ == "__main__":
     ## ibcf
     model_i = KNNmodel(train,kind='ibcf')
     model_i.jaccard_sim()
-    model_i.fit(topK=100,remove=True)
+    model_i.fit(topK=100,remove=False)
     ## ubcf
     model_u = KNNmodel(train,kind='ubcf')
     model_u.jaccard_sim()
-    model_u.fit(topK=100,remove=True)
+    model_u.fit(topK=100,remove=False)
     ## popular 
     model_p = KNNmodel(train,kind='popular')
-    model_p.fit(topK=100,remove=True)
+    model_p.fit(topK=100,remove=False)
 
 
     #%%
@@ -319,9 +340,12 @@ if __name__ == "__main__":
 
     predall_p = model_p.predict(uids,topN=10)
     model_p.evaluate(predall_p,test,method='recall') # 20.57 %
+    # =============================================================================
+    # precision    
+    # =============================================================================
     
     # %%
-    temp_p = model_p.evaluate(predall_p,test,method='precision')
+    
 #%%
     
 # =============================================================================
@@ -346,3 +370,4 @@ if __name__ == "__main__":
 #for m in models:
 #    test_eval(m)
 #    
+    
