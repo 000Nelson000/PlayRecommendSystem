@@ -39,6 +39,7 @@ class KNNmodel:
     
         similarities = ab.copy()
         similarities.data /= (aa + bb - ab.data)
+        similarities = similarities.tocoo()
         similarities.setdiag(0)
         similarities = similarities.tocsr()
         sparsity = float(similarities.nnz / mat.shape[0]**2) * 100
@@ -302,10 +303,12 @@ if __name__ == "__main__":
     fundids_df_items = df_item['基金代碼'].as_matrix() # 1d array
     fundids_df_inter = df_inter['基金代碼'].unique() # 1d array
     fundids = np.intersect1d(fundids_df_inter,fundids_df_items) # 1d array
-    
+    ### 
+    userids = df_user['身分證字號'].unique()
     ### arrange purchasing data which fundid exist in fundids
     ## (exclude data which is not exist in fundids)
     df_inter = df_inter.loc[df_inter['基金代碼'].isin(fundids)]
+    df_inter = df_inter.loc[df_inter['身分證字號'].isin(userids)]
     ## user who bought at least two items
     df_gt2 = rec_helper.threshold_interaction(df_inter,'身分證字號','基金代碼') # 
     ### 
@@ -447,13 +450,3 @@ def csr_rows_set_nz_to_val(csr, rows, value=0):
     if value == 0:
         csr.eliminate_zeros()
         
-def evaluate(size):
-    degs = [1]*size
-    inVs = list(range(1, size, int(size/25)))
-    outVs = list(range(5, size, int(size/25)))
-    where = np.hstack((inVs, outVs)).astype(int)
-    start_time = time.time()
-    A = sp.csc_matrix((size, size))
-    M = sp.diags([degs], [0]) - A
-    csr_rows_set_nz_to_val(M, where)
-    return time.time()-start_time
