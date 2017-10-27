@@ -43,7 +43,7 @@ class KNNmodel:
         similarities.setdiag(0)
         similarities = similarities.tocsr()
         sparsity = float(similarities.nnz / mat.shape[0]**2) * 100
-        print('similarity (jaccard) matrix built ({}), sparsity: {:.2f} %'\
+        print('similarity (jaccard) matrix built ({}), \nsparsity of similarity: {:.2f} %'\
               .format(self.kind,sparsity))
         self.sim = similarities
 
@@ -53,13 +53,13 @@ class KNNmodel:
             self.sim = cosine_similarity(self.inter,dense_output=False)
             self.sim.setdiag(0)
             sparsity = float(self.sim.nnz / self.inter.shape[0]**2) * 100
-            print('similarity (cosine) matrix build (ubcf), sparsity: {:.2f} %'\
+            print('similarity (cosine) matrix build (ubcf), \nsparsity of similarity: {:.2f} %'\
                   .format(sparsity))
         elif self.kind =='ibcf':
             self.sim = cosine_similarity(self.inter.T,dense_output=False)
             self.sim.setdiag(0)
             sparsity = float(self.sim.nnz / self.inter.shape[1]**2) * 100
-            print('similarity (cosine) matrix build (ibcf), sparsity: {:.2f} %'\
+            print('similarity (cosine) matrix build (ibcf), \nsparsity of similarity: {:.2f} %'\
                   .format(sparsity))
 
     def _replace_purcashed_items(self,X):
@@ -80,20 +80,6 @@ class KNNmodel:
                 data[idx] = 0
             idx+=1
         X_coo = sp.coo_matrix((data,(row,col)))
-
-#        inter_lil = self.inter.tolil() # interaction datasets (csr -> lil)
-#        inter_lil_rows = inter_lil.rows
-#
-#        X_lil = sp.lil_matrix(X)
-#
-#        for r_idx, row in enumerate(X_lil.rows):
-#            remove_intersec = np.intersect1d(row,inter_lil_rows[r_idx])
-#            for col_idx in row:
-#                if np.isnan(X_lil[r_idx,col_idx]):
-#                    X_lil[r_idx,col_idx] = 0
-#            if remove:# remove existed rating data
-#                for remove_cidx in remove_intersec:
-#                    X_lil[r_idx,remove_cidx] = 0
 
         return X_coo.tocsr()
 
@@ -187,9 +173,6 @@ class KNNmodel:
                 pred+= model.rating
 
 
-
-
-
         print('{} rating matrix built...'.format(self.kind))
         if remove:
             print('\nhandling nan data...')
@@ -227,7 +210,7 @@ class KNNmodel:
             top N recommeded items idx array for uids
         """
         if self.kind in ('ibcf','ubcf','popular','ubcf_fs'):
-            topNarray = np.argsort(self.rating[uids,:].A)[:,:-topN-1:-1]
+            topNarray = np.argsort(self.rating[uids,:].A,kind='heapsort')[:,:-topN-1:-1]
             self.topN = topN
             return topNarray
 
@@ -280,7 +263,6 @@ class KNNmodel:
 
 
 
-
 # %%
 # =============================================================================
 # main
@@ -326,6 +308,8 @@ if __name__ == "__main__":
     train,test, user_idxs = rec_helper.train_test_split(purchased_ui,split_count=1,fraction=0.2)
     
     ## users features
+    df_item['iidx'] = df_item['基金代碼']\
+        .apply(lambda row,mapper:mapper.get(row,np.nan), args=[itemid_to_idx])
     df_ufs['uidx'] = df_ufs['uid']\
         .apply(lambda row,mapper: mapper.get(row,np.nan), args=[userid_to_idx])
     # align with train data (user-row-based)
@@ -374,100 +358,91 @@ if __name__ == "__main__":
     model_i.evaluate(predall_i,test,method='prebcision') # 1.14 %
     model_p.evaluate(predall_p,test,method='precision') # 1.91 %
     model_fs.evaluate(predall_ufs,test,method='precision') # 2.55 %
-    # %%
-    # =============================================================================
-    # ubcf_fs    
-    # =============================================================================
-    
-    predall_ufs = model_fs.predict(uids,topN=5)
+
     
 #%%
 
 # =============================================================================
 # test  zone
 # =============================================================================
-#model = model_p
-#
-#def test_eval(model):
-#    uids = np.arange(0,train.shape[0])
-#    pred_all = model.predict(uids,5) # 2d array
-#    test_coo = test.tocoo()
-#    score = 0
-#    for row,col,v in zip(test_coo.row,test_coo.col,test_coo.data):
-#        if col in pred_all[row,]:
-#            score += 1
-#    print("\n-------------")
-#    print("model: {}".format(model.kind))
-#    print("recall:{:.2f} %".format(score/len(test_coo.data) * 100))
-#
-#models = [model_i,model_u,model_p]
-#
-#for m in models:
-#    test_eval(m)
-#
-    userid_to_idx
-    rowname = '身分證字號'
-    def map_ids(row, mapper):
-        return mapper.get(row,np.nan)
-    temp = df_user.copy()
-    temp['uidx'] = df_user[rowname].apply(map_ids, args=[userid_to_idx])
-    temp
-    ## random sample user
-    f_bool1 = np.random.randint(0,2,size=train.shape[0])
-    f_bool2 = np.random.randint(0,2,size=train.shape[0])
-    f_bool3 = np.random.randint(0,2,size=train.shape[0])
-    f_bool = np.vstack((f_bool1,f_bool2,f_bool3)).T # for features test !!
-
-    f_tables = f_bool
-
-    inter = train.copy()
-    inter_lil = inter.tolil()
-
-
-    ## built CF model based on bool features infos
-    temp_inter = inter.copy()
-    model_list = []
-    pred = sp.lil_matrix((temp_inter.shape))
-    for i in range(3):
-
-        temp_prev = temp_inter.copy()
-        rows_zeros = np.where(f_tables[:,i])[0]
-        csr_rows_set_nz_to_val(temp_prev,rows_zeros,value=0) ## set to zero
-        model = KNNmodel(temp_prev,kind='ibcf')
-        model.jaccard_sim()
-        model.fit()
-        model_list.append(model)
-        pred += model.rating
-
-
-
-
-
-
-#    inter * sp.csr_matrix(f_bool2d)
-    inter_csr = inter.tocsr()
-    rows_zeros = np.where(f_bool==0)[0]
-
-
-    model_temp = KNNmodel(temp_inter,kind='ibcf')
-    model_temp.jaccard_sim()
-    model_temp.fit(topK=100)
-
-
-
-# %%
 
 ## how to
-def csr_row_set_nz_to_val(csr, row, value=0):
-    """Set all nonzero elements (elements currently in the sparsity pattern)
-    to the given value. Useful to set to 0 mostly.
-    """
-    if not isinstance(csr, sp.csr_matrix):
-        raise ValueError('Matrix given must be of CSR format.')
-    csr.data[csr.indptr[row]:csr.indptr[row+1]] = value
+#def csr_row_set_nz_to_val(csr, row, value=0):
+#    """Set all nonzero elements (elements currently in the sparsity pattern)
+#    to the given value. Useful to set to 0 mostly.
+#    """
+#    if not isinstance(csr, sp.csr_matrix):
+#        raise ValueError('Matrix given must be of CSR format.')
+#    csr.data[csr.indptr[row]:csr.indptr[row+1]] = value
+#
+#def csr_rows_set_nz_to_val(csr, rows, value=0):
+#    for row in rows:
+#        csr_row_set_nz_to_val(csr, row)
+#    if value == 0:
+#        csr.eliminate_zeros()
+def get_itemids_ratings_np(model,predall):
+    num_users,num_items = predall.shape    
+    rating = model.rating
+    predall_itemid = np.zeros(num_users*num_items,dtype='object')
+    for pos,e in enumerate(predall.flatten()):
+        predall_itemid[pos] = idx_to_itemid[e]
+    
+    predall_itemid.shape = predall.shape
+    predall_rating = np.sort(rating.A,axis=1,kind='heapsort')[:,:-model.topN-1:-1]
+    return predall_itemid,predall_rating
 
-def csr_rows_set_nz_to_val(csr, rows, value=0):
-    for row in rows:
-        csr_row_set_nz_to_val(csr, row)
-    if value == 0:
-        csr.eliminate_zeros()
+predall_itemid,predall_rating = get_itemids_ratings_np(model_fs,predall_ufs)
+    
+rating_u = model_u.rating
+num_users,num_items = predall_u.shape    
+predall_u_name = np.zeros(num_users*num_items, dtype='object')
+for pos,e in enumerate(predall_u.flatten()):
+    predall_u_name[pos] = idx_to_itemid[e]
+
+predall_u_name.shape = predall_u.shape
+##     
+predall_u_rating = np.sort(rating_u.A,axis=1,kind='heapsort')[:,:-6:-1] # topN(eg:20) sorted rating 
+
+predall_u_rating.shape
+predall_u_name.shape
+
+### bought ?
+def recommend_items_for_one_user(u_no):    
+    print(df_item[df_item['基金代碼'].isin(predall_u_name[u_no])].iloc[:,[2,4,5,9,10]])
+
+def purchased_items_for_a_user(u_no):
+    idxs = np.where(train[u_no,].A)[1]
+    items_ids = []
+    for idx in idxs:
+        items_ids.append(idx_to_itemid[idx])
+    print(df_item[df_item['基金代碼'].isin(items_ids)].iloc[:,[2,4,5,9,10]])
+#temp = df_item[df_item['基金代碼'].isin(predall_u_name[0])]
+#temp.iloc[:,2:6]
+recommend_items_for_one_user(10)
+purchased_items_for_a_user(10)
+
+print(df_item[df_item['基金代碼'].isin(predall_u_name[0])].iloc[:,[2,4,5,9,10]])
+
+# =============================================================================
+# ### build df to sql ####
+# =============================================================================
+
+
+def arrange_predict_to_dataframe(predall_itemids,predall_rating,model_kind):
+    df_list = []
+    predall_rating
+    for idx,(fund_ids,fund_scores) in tqdm(enumerate(\
+                                        zip(predall_itemids,predall_rating)),
+                                        total= predall_itemids.shape[0],
+                                        unit = 'users'):
+        userid = idx_to_userid[idx]
+        df_list.append(pd.DataFrame({'userid' : userid,
+                                     'fundid' : fund_ids,
+                                     'score' : fund_scores,
+                                     'model' : model_kind
+                                     }))
+    return pd.concat(df_list)
+
+df = arrange_predict_to_dataframe(predall_u_name,predall_u_rating,'ubcf')    
+df2 = arrange_predict_to_dataframe(predall_itemid,predall_rating,model_fs.kind)
+df_total = pd.concat([df,df2])
