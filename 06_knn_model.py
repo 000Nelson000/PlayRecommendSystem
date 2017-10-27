@@ -39,7 +39,7 @@ class KNNmodel:
 
         similarities = ab.copy()
         similarities.data /= (aa + bb - ab.data)
-        similarities = similarities.tocoo()
+#        similarities = similarities.tocoo()
         similarities.setdiag(0)
         similarities = similarities.tocsr()
         sparsity = float(similarities.nnz / mat.shape[0]**2) * 100
@@ -97,7 +97,7 @@ class KNNmodel:
 
         return X_coo.tocsr()
 
-    def fit(self,topK=20,normalize=True,remove=False,user_features=None):
+    def fit(self,topK=100,normalize=True,remove=False,user_features=None):
         """fit model
 
         params
@@ -175,13 +175,14 @@ class KNNmodel:
             assert user_features.shape[0] == self.inter.shape[0]
 
             inter_copy = self.inter.copy() # copy of interaction data
-            for idx in range(user_features.shape[1]):
-                temp_prev = inter_copy.copy()
+            user_features = user_features.A
+            for idx in range(user_features.shape[1]):                
+                inter_temp = inter_copy.copy()
                 rows_zeros = np.where(user_features[:,idx])[0]
-                csr_rows_set_nz_to_val(temp_prev,rows_zeros, value=0) ## set to zero
-                model = KNNmodel(inter_copy,kind='ubcf')
+                csr_rows_set_nz_to_val(inter_temp,rows_zeros, value=0) ## set to zero
+                model = KNNmodel(inter_temp,kind='ubcf')
                 model.jaccard_sim()
-                model.fit()
+                model.fit(topK=100)
 
                 pred+= model.rating
 
@@ -225,7 +226,7 @@ class KNNmodel:
         topNarray: (2darray)
             top N recommeded items idx array for uids
         """
-        if self.kind in ('ibcf','ubcf','popular'):
+        if self.kind in ('ibcf','ubcf','popular','ubcf_fs'):
             topNarray = np.argsort(self.rating[uids,:].A)[:,:-topN-1:-1]
             self.topN = topN
             return topNarray
@@ -291,20 +292,22 @@ if __name__ == "__main__":
     from sklearn.metrics.pairwise import cosine_similarity
 #    from progressbar import ProgressBar, Percentage,Bar
     from tqdm import tqdm
-
+    from rec_helper import *
     import rec_helper
 
     df_inter = pd.read_csv('./funds/purchase.csv',encoding='cp950')
     df_item = pd.read_csv('./funds/item_features.csv',encoding='cp950')
     df_user = pd.read_csv('./funds/user_features.csv',encoding='cp950')
-    df_u_fs = pd.read_csv('./funds/user_features_1.csv',encoding='utf8')
+    df_ufs = pd.read_csv('./funds/user_features_1.csv',encoding='utf8')
     #%%
     ### there are some fundids in df_inter not exists in df_item
     fundids_df_items = df_item['基金代碼'].as_matrix() # 1d array
     fundids_df_inter = df_inter['基金代碼'].unique() # 1d array
     fundids = np.intersect1d(fundids_df_inter,fundids_df_items) # 1d array
     ###
-    userids = df_user['身分證字號'].unique()
+    userids_crm1 = df_user['身分證字號'].unique()
+    userids_crm2 = df_ufs['uid'].unique()
+    userids = np.intersect1d(userids_crm1,userids_crm2)
     ### arrange purchasing data which fundid exist in fundids
     ## (exclude data which is not exist in fundids)
     df_inter = df_inter.loc[df_inter['基金代碼'].isin(fundids)]
@@ -321,6 +324,14 @@ if __name__ == "__main__":
     purchased_ui, userid_to_idx, \
     idx_to_userid, itemid_to_idx,idx_to_itemid = rec_helper.df_to_spmatrix(df_gt2,'身分證字號','基金代碼')
     train,test, user_idxs = rec_helper.train_test_split(purchased_ui,split_count=1,fraction=0.2)
+    
+    ## users features
+    df_ufs['uidx'] = df_ufs['uid']\
+        .apply(lambda row,mapper: mapper.get(row,np.nan), args=[userid_to_idx])
+    # align with train data (user-row-based)
+    df_ufs_align = df_ufs.sort_values(by='uidx').loc[:,:'d.AUM.300萬元以上']
+    train_ufs = sp.csr_matrix(df_ufs_align)
+    
     #%%
     # =============================================================================
     #  model
@@ -336,8 +347,9 @@ if __name__ == "__main__":
     ## popular
     model_p = KNNmodel(train,kind='popular')
     model_p.fit(topK=100,remove=False)
-
-
+    ## ubcf-fb
+    model_fs = KNNmodel(train,kind='ubcf_fs')
+    model_fs.fit(topK=100,user_features = train_ufs)
     #%%
     # =============================================================================
     # evaluate recall
@@ -345,22 +357,30 @@ if __name__ == "__main__":
     uids = np.arange(0,train.shape[0])
 
     predall_u = model_u.predict(uids,topN=10)
-    model_u.evaluate(predall_u,test,method='recall') # 28.4 %
+    model_u.evaluate(predall_u,test,method='recall') # 22.82 %
 
     predall_i = model_i.predict(uids,topN=10)
-    model_i.evaluate(predall_i,test,method='recall') # 12.85 %
+    model_i.evaluate(predall_i,test,method='recall') # 11.44 %
 
     predall_p = model_p.predict(uids,topN=10)
-    model_p.evaluate(predall_p,test,method='recall') # 20.57 %
+    model_p.evaluate(predall_p,test,method='recall') # 19.09 %
+    
+    predall_ufs = model_fs.predict(uids,topN=10)
+    model_fs.evaluate(predall_ufs,test,method='recall') # 25.49 %
     # =============================================================================
     # precision
     # =============================================================================
-    model_u.evaluate(predall_u,test,method='precision')
-    model_i.evaluate(predall_i,test,method='precision')
-    model_p.evaluate(predall_p,test,method='precision')
-
+    model_u.evaluate(predall_u,test,method='precision') # 2.28 %
+    model_i.evaluate(predall_i,test,method='prebcision') # 1.14 %
+    model_p.evaluate(predall_p,test,method='precision') # 1.91 %
+    model_fs.evaluate(predall_ufs,test,method='precision') # 2.55 %
     # %%
-
+    # =============================================================================
+    # ubcf_fs    
+    # =============================================================================
+    
+    predall_ufs = model_fs.predict(uids,topN=5)
+    
 #%%
 
 # =============================================================================
@@ -437,7 +457,6 @@ if __name__ == "__main__":
 
 # %%
 
-import time
 ## how to
 def csr_row_set_nz_to_val(csr, row, value=0):
     """Set all nonzero elements (elements currently in the sparsity pattern)
