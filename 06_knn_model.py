@@ -61,7 +61,7 @@ class KNNmodel:
             sparsity = float(self.sim.nnz / self.inter.shape[1]**2) * 100
             print('similarity (cosine) matrix build (ibcf), \nsparsity of similarity: {:.2f} %'\
                   .format(sparsity))
-
+    
     def _replace_purcashed_items(self,X):
         """replace items which user have already bought
         """
@@ -108,8 +108,32 @@ class KNNmodel:
 
         if self.kind == 'ubcf':
             sim = self.sim
-
-            topK_users = np.argsort(sim.A,axis=1)[:,:-topK-1:-1]  ## memory cost a lot if num_of users is very large
+            ## memory cost a lot if num_of users is very large
+#            topK_users = np.argsort(sim.A,axis=1)[:,:-topK-1:-1]  
+            ##### build topK_users array ####
+            topK_users = np.zeros(shape=(sim.shape[0],topK))
+            print('-- start building topK user array...')
+            for row_idx in tqdm(range(sim.shape[0]),unit='users'):
+                topk_users = np.argsort(sim[row_idx,].A,)[:,:-topK-1:-1]
+                topK_users[row_idx,] = topk_users
+            ## 
+#            for row_idx in tqdm(range(sim.shape[0]),unit='user'):
+#                slice_start = sim.indptr[row_idx]
+#                slice_end = sim.indptr[row_idx+1]
+#                sim_row = sim.data[slice_start:slice_end] 
+#                col_idx_by_row = sim.indices[slice_start:slice_end]
+#                zipped_list = list(zip(col_idx_by_row,sim_row))
+#                zipped_list.sort(key=lambda e:e[1],reverse=True)
+#                sorted_col_idx = [idx[0] for idx in zipped_list][:topK]
+#                ## pading with different len
+#                sorted_col_idx = np.pad(sorted_col_idx,(0,topK - len(sorted_col_idx)),
+#                       'constant',constant_values = 0)
+#                topK_users[row_idx,] = sorted_col_idx 
+            print('-- end building topK user array---')
+            
+                
+               
+            print('start building prediction rating...')        
             for user in tqdm(range(pred.shape[0]),unit='users'):
                 topk_user = topK_users[user,:] # shape:(topK,)
                 #top k users for a given user , but pretty slow if numofusers large
