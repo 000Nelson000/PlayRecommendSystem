@@ -347,17 +347,17 @@ if __name__ == "__main__":
     ## ibcf
     model_i = KNNmodel(train,kind='ibcf')
     model_i.jaccard_sim()
-    model_i.fit(topK=100,remove=False)
+    model_i.fit(topK=100,remove=True)
     ## ubcf
     model_u = KNNmodel(train,kind='ubcf')
     model_u.jaccard_sim()
-    model_u.fit(topK=100,remove=False)
+    model_u.fit(topK=100,remove=True)
     ## popular
     model_p = KNNmodel(train,kind='popular')
-    model_p.fit(topK=100,remove=False)
+    model_p.fit(topK=100,remove=True)
     ## ubcf-fb
     model_fs = KNNmodel(train,kind='ubcf_fs')
-    model_fs.fit(topK=100,user_features = train_ufs)
+    model_fs.fit(topK=100,user_features = train_ufs,remove=True)
     #%%
     # =============================================================================
     # evaluate recall
@@ -379,18 +379,15 @@ if __name__ == "__main__":
     # precision
     # =============================================================================
     model_u.evaluate(predall_u,test,method='precision') # 2.28 %
-    model_i.evaluate(predall_i,test,method='prebcision') # 1.14 %
+    model_i.evaluate(predall_i,test,method='precision') # 1.14 %
     model_p.evaluate(predall_p,test,method='precision') # 1.91 %
     model_fs.evaluate(predall_ufs,test,method='precision') # 2.55 %
 
     
 #%%
 
-# =============================================================================
-# test  zone
-# =============================================================================
 
-## how to
+## how to 
 #def csr_row_set_nz_to_val(csr, row, value=0):
 #    """Set all nonzero elements (elements currently in the sparsity pattern)
 #    to the given value. Useful to set to 0 mostly.
@@ -405,6 +402,8 @@ if __name__ == "__main__":
 #    if value == 0:
 #        csr.eliminate_zeros()
 def get_itemids_ratings_np(model,predall):
+    """retrive model rating , and itemids
+    """
     num_users,num_items = predall.shape    
     rating = model.rating
     predall_itemid = np.zeros(num_users*num_items,dtype='object')
@@ -415,37 +414,9 @@ def get_itemids_ratings_np(model,predall):
     predall_rating = np.sort(rating.A,axis=1,kind='heapsort')[:,:-model.topN-1:-1]
     return predall_itemid,predall_rating
 
-predall_itemid,predall_rating = get_itemids_ratings_np(model_fs,predall_ufs)
-    
-rating_u = model_u.rating
-num_users,num_items = predall_u.shape    
-predall_u_name = np.zeros(num_users*num_items, dtype='object')
-for pos,e in enumerate(predall_u.flatten()):
-    predall_u_name[pos] = idx_to_itemid[e]
-
-predall_u_name.shape = predall_u.shape
-##     
-predall_u_rating = np.sort(rating_u.A,axis=1,kind='heapsort')[:,:-6:-1] # topN(eg:20) sorted rating 
-
-predall_u_rating.shape
-predall_u_name.shape
-
-### bought ?
-def recommend_items_for_one_user(u_no):    
-    print(df_item[df_item['基金代碼'].isin(predall_u_name[u_no])].iloc[:,[2,4,5,9,10]])
-
-def purchased_items_for_a_user(u_no):
-    idxs = np.where(train[u_no,].A)[1]
-    items_ids = []
-    for idx in idxs:
-        items_ids.append(idx_to_itemid[idx])
-    print(df_item[df_item['基金代碼'].isin(items_ids)].iloc[:,[2,4,5,9,10]])
-#temp = df_item[df_item['基金代碼'].isin(predall_u_name[0])]
-#temp.iloc[:,2:6]
-recommend_items_for_one_user(10)
-purchased_items_for_a_user(10)
-
-print(df_item[df_item['基金代碼'].isin(predall_u_name[0])].iloc[:,[2,4,5,9,10]])
+predall_itemid_fs,predall_rating_fs = get_itemids_ratings_np(model_fs,predall_ufs)
+predall_itemid_u,predall_rating_u = get_itemids_ratings_np(model_u,predall_u)
+predall_itemid_p,predall_rating_p = get_itemids_ratings_np(model_p,predall_p)
 
 # =============================================================================
 # ### build df to sql ####
@@ -467,6 +438,105 @@ def arrange_predict_to_dataframe(predall_itemids,predall_rating,model_kind):
                                      }))
     return pd.concat(df_list)
 
-df = arrange_predict_to_dataframe(predall_u_name,predall_u_rating,'ubcf')    
-df2 = arrange_predict_to_dataframe(predall_itemid,predall_rating,model_fs.kind)
-df_total = pd.concat([df,df2])
+df = arrange_predict_to_dataframe(predall_itemid_fs,predall_rating_fs,'ubcf_fs') # ubcf-fs
+df2 = arrange_predict_to_dataframe(predall_itemid_u,predall_rating_u,'ubcf') # ubcf
+df3 = arrange_predict_to_dataframe(predall_itemid_p,predall_rating_p,'popular')# popular
+#df = arrange_predict_to_dataframe(predall_u_name,predall_u_rating,'ubcf')    
+#df2 = arrange_predict_to_dataframe(predall_itemid,predall_rating,model_fs.kind)
+#df_total = pd.concat([df,df2])
+
+df_total = pd.concat([df,df2,df3])
+df_total['rank'] = df_total.index +1
+#df_total
+
+import sqlalchemy
+#conn = pypyodbc.connect("DRIVER={SQL Server};SERVER=dbm_public;UID=sa;PWD=01060728;DATABASE=test")
+engine = sqlalchemy.create_engine("mssql+pyodbc://user:pwd@server_name/db?driver=SQL Server")
+engine.connect()
+
+#data.to_sql(name="some_table", con=engine, if_exists='replace', index=False,
+#            dtype={'datefld': sqlalchemy.DateTime(), 
+#                   'intfld':  sqlalchemy.types.INTEGER(),
+#                   'strfld': sqlalchemy.types.VARCHAR(length=255),
+#                   'floatfld': sqlalchemy.types.Float(precision=3, asdecimal=True),
+#                   'booleanfld': sqlalchemy.types.Boolean}
+
+df_total['score'] = df_total['score'].astype('float16')
+
+df_total.to_sql('ihong_基金推薦demo_推薦清單', con=engine,index=False,
+                if_exists='replace',
+                dtype = {'fundid':sqlalchemy.types.VARCHAR(length=255),
+                         'model':sqlalchemy.types.VARCHAR(length=20),
+                         'score':sqlalchemy.types.DECIMAL(5,3),
+                         'rank' : sqlalchemy.types.INT(),
+                         'userid': sqlalchemy.types.VARCHAR(length=20)
+                         })
+df_total.to_csv('./funds/recommended_list.csv',index=False) # save to csv local file
+
+df_gt2.to_sql('ihong_基金推薦demo_申購紀錄',con=engine,index=False,
+              if_exists='replace',
+              dtype = {'申購登錄年':sqlalchemy.types.SMALLINT,
+                       '身分證字號':sqlalchemy.types.VARCHAR(length=20),
+                       '基金中文名稱':sqlalchemy.types.VARCHAR(length=100),
+                       '憑證':sqlalchemy.types.VARCHAR(length=20),
+                       'db身分':sqlalchemy.types.VARCHAR(length=20),
+                       '投資型態':sqlalchemy.types.VARCHAR(length=20),
+                       '自然人身分':sqlalchemy.types.VARCHAR(length=20),
+                       'idn': sqlalchemy.types.INT,
+                       '基金代碼':sqlalchemy.types.VARCHAR(length=20),
+                       '購買次數':sqlalchemy.types.SMALLINT,
+                      })
+df_ufs.to_sql('ihong_基金推薦demo_用戶特徵',con=engine,index=False,
+              if_exists='replace',
+              dtype = {'國內股票型':sqlalchemy.types.SMALLINT,
+                       '國外債券型':sqlalchemy.types.SMALLINT,
+                       '國外股票型':sqlalchemy.types.SMALLINT,
+                       'a.AUM.0元':sqlalchemy.types.SMALLINT,
+                       'b.AUM.0.100萬元':sqlalchemy.types.SMALLINT,
+                       'c.AUM.100.300萬':sqlalchemy.types.SMALLINT,
+                       'd.AUM.300萬元以上':sqlalchemy.types.SMALLINT,
+                       'uid':sqlalchemy.types.VARCHAR(length=20),
+                       'uidx':sqlalchemy.types.SMALLINT
+                      })
+
+#df_item_used = df_item[df_item['基金代碼'].isin(fundids)]
+#df_item_used['yyyymmdd'] = df_item_used['yyyymmdd'].astype('object')
+#df_item_used['iidx'] = df_item_used['iidx'].astype('int')
+df_item_used.to_sql('ihong_基金推薦demo_基金特徵',con=engine,index=False,
+                    if_exists='replace',
+                    dtype={'更新時間':sqlalchemy.types.DATETIME,
+                           'yyyymmdd':sqlalchemy.types.VARCHAR(length=8),
+                           '基金代碼':sqlalchemy.types.VARCHAR(length=10),
+                           '國內外基金註記':sqlalchemy.types.SMALLINT,
+                           '基金規模(台幣/億)':sqlalchemy.types.DECIMAL(20,3),
+                           '基金目前規模區間':sqlalchemy.types.VARCHAR(length=30),
+                           '基金成立時間':sqlalchemy.types.DATETIME,
+                           '基金成立幾年':sqlalchemy.types.SMALLINT,
+                           '基金公司代碼':sqlalchemy.types.VARCHAR(length=10),
+                           '計價幣別':sqlalchemy.types.VARCHAR(length=10),
+                           '基金經理人':sqlalchemy.types.VARCHAR(length=200),
+                           '區域別':sqlalchemy.types.VARCHAR(length=10),
+                           '基金投資產業分類1':sqlalchemy.types.VARCHAR(length=50),
+                           '基金投資產業分類2':sqlalchemy.types.VARCHAR(length=50),
+                           '基金投資產業分類3':sqlalchemy.types.VARCHAR(length=50),
+                           'aum基金型態別':sqlalchemy.types.VARCHAR(length=10),
+                           '商品投資屬性':sqlalchemy.types.VARCHAR(length=10),
+                           '高收益債註記':sqlalchemy.types.SMALLINT,
+                           '保本型基金註記':sqlalchemy.types.VARCHAR(length=10),
+                           '淨值':sqlalchemy.types.DECIMAL(20,2),
+                           'sharpe':sqlalchemy.types.DECIMAL(5,2),
+                           'beta':sqlalchemy.types.DECIMAL(5,2),
+                           '一個月累積報酬率(%)':sqlalchemy.types.DECIMAL(20,2),
+                           '三個月累積報酬率(%)':sqlalchemy.types.DECIMAL(20,2),
+                           '六個月累積報酬率(%)':sqlalchemy.types.DECIMAL(20,2),
+                           '一年累積報酬率(%)': sqlalchemy.types.DECIMAL(20,2),
+                           '三年累積報酬率(%)':sqlalchemy.types.DECIMAL(20,2),
+                           '五年累積報酬率(%)':sqlalchemy.types.DECIMAL(20,2),
+                           '自今年以來報酬率(%)':sqlalchemy.types.DECIMAL(20,2),
+                           '自成立日起報酬率(%)':sqlalchemy.types.DECIMAL(20,2),
+                           '基金評等':sqlalchemy.types.DECIMAL(2,1),
+                           '熱賣基金註記':sqlalchemy.types.SMALLINT,
+                           '投資型態別':sqlalchemy.types.VARCHAR(length=20),
+                           'cluster':sqlalchemy.types.SMALLINT,
+                           'iidx':sqlalchemy.types.SMALLINT                          
+                            })

@@ -1,0 +1,21 @@
+{
+  "name": "funds_web",
+  "version": "0.1.0",
+  "description": "demo the funds recommendation result",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "recommendation",
+    "demo",
+    "funds"
+  ],
+  "author": "ihong",
+  "license": "ISC",
+  "dependencies": {    
+    "bootstrap": "^3.3.7",
+    "express": "^4.14.0",    
+    "mssql": "^3.3.0"
+  }
+}
