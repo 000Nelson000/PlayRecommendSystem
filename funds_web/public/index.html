@@ -1,9 +1,41 @@
 <!DOCTYPE html>
-<html>
+<html ng-app="recommendApp">
+
 <head>
+	<meta charset="UTF-8">
 	<title>基金推薦demo</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.26/angular.min.js"></script>
+	<style>
+		table,
+		th,
+		td {
+			border: 1px solid grey;
+			border-collapse: collapse;
+			padding: 5px;
+		}
+
+		table tr:nth-child(odd) {
+			background-color: #f1f1f1;
+		}
+
+		table tr:nth-child(even) {
+			background-color: #ffffff;
+		}
+	</style>
 </head>
-<body>
+
+<body ng-controller="MainCtrl">
+	<h1>基金推薦Demo</h1>
+	隨便來一個看看:
+	<button ng-click="">點我點我</button>
+	<br/>
+	<br/>
+	<tr>
+		<td>hi</td>
+		<td>hello</td>
+		<td>ihong</td>
+	</tr>
 
 </body>
+
 </html>
