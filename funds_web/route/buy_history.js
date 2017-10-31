@@ -17,7 +17,8 @@ function getBuyHistoryAction(req,res){
 
 	request.query(sqlBuyHistory(id),function(err,data){
 		if(err){
-			throw err
+			res.send('Error,query failed!')
+			// throw err
 		}else{
 			res.send(data);
 		}

@@ -12,29 +12,23 @@ module.exports = {
 }
 
 
-// function getModelPopAction(req,res){
-// 	var request = new sql.Request(cp);
-// 	var id = req.params.id;
-// 	request.query(sqlGet)
-// }
 
 function getModelAction(req, res) {
-	// var request = new sql.Request(cp);
+	var request = new sql.Request(cp);
 	var id = req.params.id;
 	var model = req.params.model;
-	console.log("model: " + model);
-	res.send({
-		"model": model,
-		"id": id
-	});
+	console.log("uid:" + id + "model: " + model );
+	
+	// res.send();
 
-	// request.query(sqlGetRecommended(id, model),function(err,data){
-	// 	if(err){
-	// 		throw err;
-	// 	}else{
-	// 		res.send(data);
-	// 	}
-	// });
+	request.query(sqlGetRecommended(id, model),function(err,data){
+		if(err){
+			res.send('Error,query failed!!')
+			// throw err;
+		}else{
+			res.send(data);
+		}
+	});
 }
 
 /*sql helper*/
@@ -59,6 +53,7 @@ function sqlGetRecommended(seedid, model) {
 		on a.fundid=b.基金代碼
 	where userid = '${id}' and 	model ='${model}'
 	and  更新時間 > getdate()-7 
+	order by score desc
 	`;
 	return sql_recommend;
 }

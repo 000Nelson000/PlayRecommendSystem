@@ -27,15 +27,164 @@
 <body ng-controller="MainCtrl">
 	<h1>基金推薦Demo</h1>
 	隨便來一個看看:
-	<button ng-click="">點我點我</button>
+	<button ng-click="getRecommendation(rand=true)">點我點我</button>
+	<br/>
+	<br/> 用戶:
+	<input type="text" ng-model="uid"> 
+	<button ng-click="getRecommendation(rand=false)">按我查詢</button>
+	<h2>0. 購買紀錄</h2>
+	<table class='table'>
+		<tr>
+			<th></th>
+			<th>基金名稱</th>
+			<th>規模區間</th>
+			<th>投資屬性</th>
+			<th>今年報酬率(%)</th>
+		</tr>
+		<tr ng-repeat="item in buylists">
+			<td>{{$index + 1}}</td>
+			<td>{{item["基金中文名稱"]}}</td>
+			<td>{{item["基金目前規模區間"]}}</td>
+			<td>{{item["商品投資屬性"]}}</td>
+			<td>{{item["自今年以來報酬率(%)"]}}</td>
+		</tr>
+	</table>
 	<br/>
 	<br/>
-	<tr>
-		<td>hi</td>
-		<td>hello</td>
-		<td>ihong</td>
-	</tr>
+	<h2>1. 熱門基金</h2>
+	<table class="table">
+		<tr>
+			<th></th>
+			<th>基金代碼</th>
+			<th>基金名稱</th>
+			<th>境內外</th>
+			<th>今年報酬率(%)</th>
+		</tr>
+		<tr ng-repeat="item in popLists">
+			<td>{{$index + 1 }}</td>
+			<td>{{item["基金代碼"]}}</td>
+			<td>{{item["基金名稱"]}}</td>
+			<td>{{item["境內外"]}}</td>
+			<td>{{item["自今年以來報酬率(%)"]}}</td>
+		</tr>
+	</table>
+	<br/>
+	<br/>
+	<h2>2. 相似的人也買</h2>
+	<table class="table">
+		<tr>
+			<th></th>
+			<th>基金代碼</th>
+			<th>基金名稱</th>
+			<th>境內外</th>
+			<th>今年報酬率(%)</th>
+		</tr>
+		<tr ng-repeat="item in ubcfLists">
+			<td>{{$index + 1 }}</td>
+			<td>{{item["基金代碼"]}}</td>
+			<td>{{item["基金名稱"]}}</td>
+			<td>{{item["境內外"]}}</td>
+			<td>{{item["自今年以來報酬率(%)"]}}</td>
+		</tr>
+	</table>
+	<br/>
+	<br/>
+	<h2>3. 資產規模/購買風格接近的人也買</h2>
 
+	<table class="table">
+		<tr>
+			<th></th>
+			<th>基金代碼</th>
+			<th>基金名稱</th>
+			<th>境內外</th>
+			<th>今年報酬率(%)</th>
+		</tr>
+		<tr ng-repeat="item in ubcffsLists">
+			<td>{{$index + 1 }}</td>
+			<td>{{item["基金代碼"]}}</td>
+			<td>{{item["基金名稱"]}}</td>
+			<td>{{item["境內外"]}}</td>
+			<td>{{item["自今年以來報酬率(%)"]}}</td>
+		</tr>
+	</table>
+	<script>
+
+		var app = angular.module("recommendApp", []);
+		
+		function MainCtrl($scope, $http) {
+			var historyAPI = "http://dbm_public:8000/history/";
+			var modelPopAPI = "http://dbm_public:8000/model/popular/"
+			var modelUbcfAPI = "http://dbm_public:8000/model/ubcf/"
+			var modelUbcfFsAPI = "http://dbm_public:8000/model/ubcf_fs/"
+			var idTests = ['A1221227000',
+				'A1221880930',
+				'A1273453200',
+				'A1595640150',
+				'A1239887050',
+				'A1254207550',
+				'A1595831960',
+				'A1220700610',
+				'A1220379530',
+				'A1221816710',
+				'A1221220140',
+				'A1222157890'];
+
+
+			$scope.getRecommendation = function (rand) {				
+				// console.log('typeof user:' + typeof(user))
+				// if (typeof(user) === "undefined"){
+				// 	var uid = idTests[Math.floor(Math.random() * idTests.length)];
+				// }else if (typeof(user) === string && user.length<=10) {
+				// 	var uid = idTests[Math.floor(Math.random() * idTests.length)];
+					
+				// } else {
+				// 	$scope.uid = user;
+				// 	var uid = user;
+				// }
+				if (rand){
+					var uid = idTests[Math.floor(Math.random() * idTests.length)];
+				} else {
+					var uid = $scope.uid;
+				}
+				
+				console.log('uid: ' + uid);
+
+				$http
+					.get(historyAPI + uid)
+					.success(function (result0) {
+						// console.log('result:'+JSON.stringify(result));					
+						$scope.buylists = result0;
+						$scope.uid = uid;
+					});
+				$http
+					.get(modelPopAPI + uid)
+					.success(function (result1) {
+						// console.log('model_pop' + JSON.stringify(result));
+						// console.log('pop uid:' + uid)
+						$scope.popLists = result1;
+						$scope.uid = uid;
+					});
+				$http
+					.get(modelUbcfAPI + uid)
+					.success(function (result2) {
+						// console.log('model_ubcf' + JSON.stringify(result));
+						// console.log('ubcf uid: ' + uid);
+						$scope.ubcfLists = result2;
+						$scope.uid = uid;
+					});
+				$http
+					.get(modelUbcfFsAPI + uid)
+					.success(function (result3) {
+						// console.log('ubcffs uid :' + uid);
+						$scope.ubcffsLists = result3;
+						$scope.uid = uid;
+					});
+			}
+			// console.log($scope.uid)
+			$scope.getRecommendation(rand=true);
+		}
+	</script>
 </body>
+
 
 </html>
