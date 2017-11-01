@@ -4,8 +4,38 @@ Created on Mon Oct 23 10:41:13 2017
 
 @author: 116952
 """
+# %% 
+def get_itemids_ratings_np(model,predall):
+    """retrive model rating , and itemids
+    """
+    num_users,num_items = predall.shape    
+    rating = model.rating
+    predall_itemid = np.zeros(num_users*num_items,dtype='object')
+    for pos,e in enumerate(predall.flatten()):
+        predall_itemid[pos] = idx_to_itemid[e]
+    
+    predall_itemid.shape = predall.shape
+    predall_rating = np.sort(rating.A,axis=1,kind='heapsort')[:,:-model.topN-1:-1]
+    return predall_itemid,predall_rating
 
 
+
+def arrange_predict_to_dataframe(predall_itemids,predall_rating,
+                                 model_kind):
+    """arrange predicting rating to dataframe 
+    """
+    df_list = []
+    for idx,(fund_ids,fund_scores) in tqdm(enumerate(\
+                                        zip(predall_itemids,predall_rating)),
+                                        total= predall_itemids.shape[0],
+                                        unit = 'users'):
+        userid = idx_to_userid[idx]
+        df_list.append(pd.DataFrame({'userid' : userid,
+                                     'fundid' : fund_ids,
+                                     'score' : fund_scores,
+                                     'model' : model_kind
+                                     }))
+    return pd.concat(df_list)
 # %%
 if __name__ == "__main__":
     from KNNmodel import *
@@ -204,5 +234,5 @@ if __name__ == "__main__":
                                '熱賣基金註記':sqlalchemy.types.SMALLINT,
                                '投資型態別':sqlalchemy.types.VARCHAR(length=20),
                                'cluster':sqlalchemy.types.SMALLINT,
-                               'iidx':sqlalchemy.types.SMALLINT                          
-#                                })
+                               'iidx':sqlalchemy.types.SMALLINT                         
+                               })
