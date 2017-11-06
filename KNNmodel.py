@@ -32,13 +32,13 @@ class KNNmodel:
         ** ref : http://na-o-ys.github.io/others/2015-11-07-sparse-vector-similarities.html
         '''
         if self.kind == 'ubcf':
-            mat = self.inter
+            mat = self.inter.astype('int16')
         elif self.kind =='ibcf':
-            mat = self.inter.T
-
-        rows_sum = mat.getnnz(axis=1)  #
+            mat = self.inter.T.astype('int16')
+        
+        rows_sum = mat.getnnz(axis=1).astype('int16')  #
         ab = mat.dot(mat.T) # mat x t(mat)
-        ab = ab.astype('float32')
+        ab = ab.astype('float16')
         # for rows
         aa = np.repeat(rows_sum, ab.getnnz(axis=1))
         # for columns
@@ -46,9 +46,10 @@ class KNNmodel:
 
         similarities = ab.copy()
         similarities.data /= (aa + bb - ab.data)
-#        similarities = similarities.tocoo()
+        similarities = similarities.astype('float32')
         similarities.setdiag(0)
         similarities = similarities.tocsr()
+        similarities.eliminate_zeros()
         sparsity = float(similarities.nnz / mat.shape[0]**2) * 100
         print('similarity (jaccard) matrix built ({}), \nsparsity of similarity: {:.2f} %'\
               .format(self.kind,sparsity))
@@ -241,7 +242,10 @@ class KNNmodel:
             top N recommeded items idx array for uids
         """
         if self.kind in ('ibcf','ubcf','popular','ubcf_fs'):
-            topNarray = np.argsort(self.rating[uids,:].A,kind='heapsort')[:,:-topN-1:-1]
+            topNarray = np.zeros((uids.shape[0],topN))
+            for _idx,_id in enumerate(uids):
+                topNarray[_idx,:] = np.argsort(self.rating[_id,:].A,kind='heapsort')[:,:-topN-1:-1]
+            # topNarray = np.argsort(self.rating[uids,:].A,kind='heapsort')[:,:-topN-1:-1]
             self.topN = topN
             return topNarray
 
