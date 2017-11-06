@@ -45,6 +45,7 @@ if __name__ == "__main__":
     import pandas as pd    
     import scipy.sparse as sp          
     import sqlalchemy
+    import pickle
     
     
     df_inter = pd.read_csv('./funds/purchase.csv',encoding='cp950')
@@ -53,19 +54,19 @@ if __name__ == "__main__":
     df_ufs = pd.read_csv('./funds/user_features_1.csv',encoding='utf8')
     #%%
     ### there are some fundids in df_inter not exists in df_item
-    fundids_df_items = df_item['基金代碼'].as_matrix() # 1d array
-    fundids_df_inter = df_inter['基金代碼'].unique() # 1d array
-    fundids = np.intersect1d(fundids_df_inter,fundids_df_items) # 1d array
+#    fundids_df_items = df_item['基金代碼'].as_matrix() # 1d array
+#    fundids_df_inter = df_inter['基金代碼'].unique() # 1d array
+#    fundids = np.intersect1d(fundids_df_inter,fundids_df_items) # 1d array
     ###
-    userids_crm1 = df_user['身分證字號'].unique()
-    userids_crm2 = df_ufs['uid'].unique()
-    userids = np.intersect1d(userids_crm1,userids_crm2)
+#    userids_crm1 = df_user['身分證字號'].unique()
+#    userids_crm2 = df_ufs['uid'].unique()
+#    userids = np.intersect1d(userids_crm1,userids_crm2)
     ### arrange purchasing data which fundid exist in fundids
     ## (exclude data which is not exist in fundids)
-    df_inter = df_inter.loc[df_inter['基金代碼'].isin(fundids)]
-    df_inter = df_inter.loc[df_inter['身分證字號'].isin(userids)]
-    ## user who bought at least two items
-    df_gt2 = threshold_interaction(df_inter,'身分證字號','基金代碼') #
+#    df_inter = df_inter.loc[df_inter['基金代碼'].isin(fundids)]
+#    df_inter = df_inter.loc[df_inter['身分證字號'].isin(userids)]
+#    ## user who bought at least two items
+#    df_gt2 = threshold_interaction(df_inter,'身分證字號','基金代碼') #
     ###
 #    purchased_ui1, userid_to_idx1, \
 #    idx_to_userid1, itemid_to_idx1,idx_to_itemid1= df_to_spmatrix(df_inter,'身分證字號','基金代碼')
@@ -73,9 +74,48 @@ if __name__ == "__main__":
     #train,test, user_idxs = train_test_split(purchased_ui,split_count=1,fraction=0.2)
 
 
-    purchased_ui, userid_to_idx, \
-    idx_to_userid, itemid_to_idx,idx_to_itemid = df_to_spmatrix(df_gt2,'身分證字號','基金代碼')
-    train,test, user_idxs = train_test_split(purchased_ui,split_count=1,fraction=0.2)
+#    purchased_ui, userid_to_idx, \
+#    idx_to_userid, itemid_to_idx,idx_to_itemid = df_to_spmatrix(df_gt2,'身分證字號','基金代碼')
+#    train,test, user_idxs = train_test_split(purchased_ui,split_count=1,fraction=0.2)
+    # =============================================================================
+    #      save to pickle -- 
+    # =============================================================================
+#    with open('./funds/sp_funds_datasets.pickle','wb') as f:
+#        data = {
+#                    'train':train,
+#                    'test':test,
+#                    'user_idxs':user_idxs, # test uids
+#                    'idx_to_userid':idx_to_userid,
+#                    'userid_to_idx':userid_to_idx,                    
+#                    'itemid_to_idx':itemid_to_idx,
+#                    'idx_to_itemid':idx_to_itemid
+#                }
+#        pickle.dump(data,f)
+#    # =============================================================================
+#    test_coo = test.tocoo()
+#    uidx = test_coo.row
+#    itemidx = test_coo.col
+#    test_uids = [idx_to_userid[uid] for uid in uidx]
+#    test_itemids = [idx_to_itemid[idx] for idx in itemidx] 
+#    test_data = pd.DataFrame({'uid':test_uids,'itemid':test_itemids}) # 切出測試資料集
+#    test_data.to_sql('ihong_基金推薦demo_測試資料',
+#                     con = engine,index=False,dtype = {
+#                         'uid':sqlalchemy.types.VARCHAR(length=12),
+#                         'itemid':sqlalchemy.types.VARCHAR(length=12)
+#                         }
+#                     )    
+    # =============================================================================
+    #     load pickle -- train, test ,user_idx(test)
+    # =============================================================================
+    with open('./funds/sp_funds_datasets.pickle','rb') as f:
+        data = pickle.load(f)
+    test = data['test']
+    train = data['train']
+    user_idxs = data['user_idxs']
+    idx_to_userid = data['idx_to_userid']
+    userid_to_idx = data['userid_to_idx']
+    idx_to_itemid = data['idx_to_itemid']
+    itemid_to_idx = data['itemid_to_idx']
     
     ## users features
     df_item['iidx'] = df_item['基金代碼']\
@@ -90,18 +130,19 @@ if __name__ == "__main__":
     # =============================================================================
     #  model
     # =============================================================================
+    
     ## ibcf
     model_i = KNNmodel(train,kind='ibcf')
     model_i.jaccard_sim()
-    model_i.fit(topK=100,remove=True)
+    model_i.fit(topK=50,remove=True)
     ## ubcf
     model_u = KNNmodel(train,kind='ubcf')
     model_u.jaccard_sim()
-    model_u.fit(topK=100,remove=True)
+    model_u.fit(topK=50,remove=True)
     ## popular
     model_p = KNNmodel(train,kind='popular')
-    model_p.fit(topK=100,remove=True)
-    ## ubcf-fb
+    model_p.fit(topK=50,remove=True)
+    ## ubcf-fs
     model_fs = KNNmodel(train,kind='ubcf_fs')
     model_fs.fit(topK=100,user_features = train_ufs,remove=True)
     #%%
@@ -111,23 +152,23 @@ if __name__ == "__main__":
     uids = np.arange(0,train.shape[0])
 
     predall_u = model_u.predict(uids,topN=10)
-    model_u.evaluate(predall_u,test,method='recall') # 22.82 %
+    model_u.evaluate(predall_u,test,method='recall') # 24.09 (22.82 %)
 
     predall_i = model_i.predict(uids,topN=10)
-    model_i.evaluate(predall_i,test,method='recall') # 11.44 %
+    model_i.evaluate(predall_i,test,method='recall') # 11.72 (11.44 %)
 
     predall_p = model_p.predict(uids,topN=10)
-    model_p.evaluate(predall_p,test,method='recall') # 19.09 %
+    model_p.evaluate(predall_p,test,method='recall') # 20.14 (19.09 %)
     
     predall_ufs = model_fs.predict(uids,topN=10)
-    model_fs.evaluate(predall_ufs,test,method='recall') # 25.49 %
+    model_fs.evaluate(predall_ufs,test,method='recall') # 31.95 (25.49 %)
     # =============================================================================
     # precision
     # =============================================================================
-    model_u.evaluate(predall_u,test,method='precision') # 2.28 %
-    model_i.evaluate(predall_i,test,method='precision') # 1.14 %
-    model_p.evaluate(predall_p,test,method='precision') # 1.91 %
-    model_fs.evaluate(predall_ufs,test,method='precision') # 2.55 %
+    model_u.evaluate(predall_u,test,method='precision') # 2.41 (2.28 %)
+    model_i.evaluate(predall_i,test,method='precision') # 1.17 (1.14 %)
+    model_p.evaluate(predall_p,test,method='precision') # 2.01 (1.91 %)
+    model_fs.evaluate(predall_ufs,test,method='precision') # 3.20 (2.55 %)
 
     
     #%%
@@ -151,9 +192,9 @@ if __name__ == "__main__":
     df_total['rank'] = df_total.index +1
     #df_total
     
-    
-    ### ## conn = pypyodbc.connect("DRIVER={SQL Server};SERVER=dbm_public;UID=sa;PWD=01060728;DATABASE=test")
-    engine = sqlalchemy.create_engine("mssql+pyodbc://user:pwd@server_name/db?driver=SQL Server")
+#    import pypyodbc
+#    conn = pypyodbc.connect("DRIVER={SQL Server};SERVER=dbm_public;UID=sa;PWD=01060728;DATABASE=test")
+    engine = sqlalchemy.create_engine("mssql+pyodbc://sa:01060728@dbm_public/test?driver=SQL Server")
     engine.connect()
     
     
@@ -195,9 +236,9 @@ if __name__ == "__main__":
                            'uidx':sqlalchemy.types.SMALLINT
                           })
     
-    #df_item_used = df_item[df_item['基金代碼'].isin(fundids)]
-    #df_item_used['yyyymmdd'] = df_item_used['yyyymmdd'].astype('object')
-    #df_item_used['iidx'] = df_item_used['iidx'].astype('int')
+    df_item_used = df_item[df_item['基金代碼'].isin(fundids)]
+    df_item_used['yyyymmdd'] = df_item_used['yyyymmdd'].astype('object')
+    df_item_used['iidx'] = df_item_used['iidx'].astype('int')
     df_item_used.to_sql('ihong_基金推薦demo_基金特徵',con=engine,index=False,
                         if_exists='replace',
                         dtype={'更新時間':sqlalchemy.types.DATETIME,

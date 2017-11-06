@@ -8,3 +8,6 @@ rec-a-sketch/
 res_fm_no_feat.pickle
 # node
 node_modules/
+
+# bat
+*.dat
