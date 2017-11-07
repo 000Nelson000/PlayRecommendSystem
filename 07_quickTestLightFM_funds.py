@@ -10,7 +10,7 @@ Created on Mon Nov  6 15:26:51 2017
 # lightfm 
 # =============================================================================
 
-
+from scipy import sparse as sp
 from lightfm import LightFM
 from lightfm.evaluation import precision_at_k,recall_at_k,auc_score
 import copy
@@ -18,6 +18,9 @@ import itertools
 import numpy as np 
 import lightfm
 import pickle 
+import pandas as pd 
+
+#fundid_names_df.to_csv('./funds/fundid_to_name.csv',index=False)
 
 with open('./funds/sp_funds_datasets.pickle','rb') as f:
     data = pickle.load(f)
@@ -30,10 +33,14 @@ userid_to_idx = data['userid_to_idx']
 idx_to_itemid = data['idx_to_itemid']
 itemid_to_idx = data['itemid_to_idx']
 
+fundid_names_df = pd.read_csv('./funds/fundid_to_name.csv',encoding='cp950')
+fundid_to_names = {}
 
+for d in fundid_names_df.to_dict('records'):
+    fundid_to_names[d['基金代碼']] = d['基金中文名稱']
 #%% 
 model = LightFM(learning_rate=0.01, loss='warp')
-model.fit(train, epochs=100)
+model.fit(train, epochs=10)
 
 train_precision = precision_at_k(model, train, k=10).mean()
 test_precision = precision_at_k(model, test, k=10).mean()
@@ -231,3 +238,38 @@ curves = grid_search_learning_curve(model,
                                     grid,
                                     epochs=[1,10,50,100],
                                     atk=10)
+#%% 
+# =============================================================================
+# sample recommendation 
+# =============================================================================
+def sample_recommendation(model, data, user_ids, print_output=True):
+    
+    train = data['train']
+    test = data['test']
+    assert isinstance(train,sp.csr_matrix) and isinstance(test,sp.csr_matrix)
+        
+    n_users, n_items = train.shape
+
+    for user_id in user_ids:
+        
+        known_positives_itemids = [ 
+                idx_to_itemid[e] for e in train[user_id].indices
+                ]
+        known_positives_item_names = [
+                fundid_to_names[e] for e in known_positives_itemids
+                ]
+        scores = model.predict(user_id, np.arange(n_items))
+        top_items_ids = [idx_to_itemid[e] for e in np.argsort(-scores)]
+        if print_output == True:
+            print("User %s" % user_id)
+            print("     Known positives:")
+
+            for x in known_positives_item_names[:3]:
+                print("        %s" % x)
+
+            print("     Recommended:")
+
+            for x in top_items_ids[:3]:
+                print("        %s" % fundid_to_names[x])
+                
+sample_recommendation(model,data,range(5))
