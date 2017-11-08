@@ -37,15 +37,15 @@ class KNNmodel:
             mat = self.inter.T.astype('int16')
         
         rows_sum = mat.getnnz(axis=1).astype('int16')  #
-        ab = mat.dot(mat.T) # mat x t(mat)
-        ab = ab.astype('float16')
+        ab = mat.dot(mat.T).astype('float16') # mat x t(mat)        
         # for rows
         aa = np.repeat(rows_sum, ab.getnnz(axis=1))
         # for columns
         bb = rows_sum[ab.indices]
-
-        similarities = ab.copy()
+        
+        similarities = ab.tocoo(copy=True)
         similarities.data /= (aa + bb - ab.data)
+        del aa,bb,ab
         similarities = similarities.astype('float32')
         similarities.setdiag(0)
         similarities = similarities.tocsr()
@@ -151,7 +151,7 @@ class KNNmodel:
 #                pred[user,:] /= np.sum(np.abs(sim[user,:])) # extremely slow
 
             if normalize:
-                eps = 1e-5
+                eps = 1e-9
                 denominator = sim.sum(axis=1)
                 zero_idx = np.where(np.isclose(denominator,0)) # which is zero in denominator is not allowd
                 denominator[zero_idx[0],] = np.full((len(zero_idx[0]),1),eps)
@@ -172,7 +172,7 @@ class KNNmodel:
 
             if normalize:
 #                np.seterr(divide='ignore',invalid='ignore') # suppress warning message
-                eps = 1e-5
+                eps = 1e-9
                 denominator = sim.sum(axis=0)
                 zero_idx = np.where(np.isclose(denominator,0)) # which is zero
                 denominator[zero_idx] = np.full((1,len(zero_idx[0])),eps)
