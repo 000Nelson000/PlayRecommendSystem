@@ -49,25 +49,25 @@ if __name__ == "__main__":
     import time
     import pypyodbc    
     
-#    df_inter = pd.read_csv('./funds/purchase.csv',encoding='cp950')
-#    df_item = pd.read_csv('./funds/item_features.csv',encoding='cp950')
-#    df_user = pd.read_csv('./funds/user_features.csv',encoding='cp950')
-#    df_ufs = pd.read_csv('./funds/user_features_1.csv',encoding='utf8')
+    df_inter = pd.read_csv('./funds/purchase.csv',encoding='cp950')
+    df_item = pd.read_csv('./funds/item_features.csv',encoding='cp950')
+    df_user = pd.read_csv('./funds/user_features.csv',encoding='cp950')
+    df_ufs = pd.read_csv('./funds/user_features_1.csv',encoding='utf8')
 #    #%%
 #    ### there are some fundids in df_inter not exists in df_item
-#    fundids_df_items = df_item['基金代碼'].as_matrix() # 1d array
-#    fundids_df_inter = df_inter['基金代碼'].unique() # 1d array
-#    fundids = np.intersect1d(fundids_df_inter,fundids_df_items) # 1d array
+    fundids_df_items = df_item['基金代碼'].as_matrix() # 1d array
+    fundids_df_inter = df_inter['基金代碼'].unique() # 1d array
+    fundids = np.intersect1d(fundids_df_inter,fundids_df_items) # 1d array
 #    ##
-#    userids_crm1 = df_user['身分證字號'].unique()
-#    userids_crm2 = df_ufs['uid'].unique()
-#    userids = np.intersect1d(userids_crm1,userids_crm2)
-#    ## arrange purchasing data which fundid exist in fundids
-#    # (exclude data which is not exist in fundids)
-#    df_inter = df_inter.loc[df_inter['基金代碼'].isin(fundids)]
-#    df_inter = df_inter.loc[df_inter['身分證字號'].isin(userids)]
-#    ## user who bought at least two items
-#    df_gt2 = threshold_interaction(df_inter,'身分證字號','基金代碼',row_min=1,col_min=0) #
+    userids_crm1 = df_user['身分證字號'].unique()
+    userids_crm2 = df_ufs['uid'].unique()
+    userids = np.intersect1d(userids_crm1,userids_crm2)
+    ## arrange purchasing data which fundid exist in fundids
+    # (exclude data which is not exist in fundids)
+    df_inter = df_inter.loc[df_inter['基金代碼'].isin(fundids)]
+    df_inter = df_inter.loc[df_inter['身分證字號'].isin(userids)]
+    ## user who bought at least two items
+    df_gt2 = threshold_interaction(df_inter,'身分證字號','基金代碼',row_min=1,col_min=0) #
     ###
 #    purchased_ui1, userid_to_idx1, \
 #    idx_to_userid1, itemid_to_idx1,idx_to_itemid1= df_to_spmatrix(df_inter,'身分證字號','基金代碼')
@@ -299,7 +299,12 @@ if __name__ == "__main__":
     # =============================================================================
     df_item_features = pd.read_sql("select * from v_ihong_基金推薦demo_基金特徵",conn)
     df_item_features.to_csv('./funds/df_item_features.csv',index=False)
-    df_temp = pd.read_csv('./funds/df_item_features.csv',sep=',',encoding='cp950')
+    df_item_features = pd.read_csv('./funds/df_item_features.csv',sep=',',encoding='cp950')
+    
+    all_itemids = idx_to_itemid.values()
+    bool_itemids = df_item_features['基金代碼'].isin(all_itemids)
+    df_item_features = df_item_features[bool_itemids]
+    
     #### establish items features look up table ######
     funds_f = {}
     for index, row in df_item_features.iterrows():
@@ -326,7 +331,7 @@ if __name__ == "__main__":
             
         return user_features
     
-    user1_have_features = get_features_given_uid(all_uids[1],df_gt2)
+#    user1_have_features = get_features_given_uid(all_uids[1],df_gt2)
     
     def get_recommended_item_for_user(itemid,have_features):
         """get common features between itemid and have features
@@ -339,8 +344,18 @@ if __name__ == "__main__":
     ##### users have features ####
     users_have_features = {}
     for uid in tqdm(all_uids): ## 38 iter/sec --- pretty slow !!!
-        users_have_features[uid] = get_features_given_uid(uid,df_gt2)                            
+        users_have_features[uid] = get_features_given_uid(uid,df_gt2)
     ##### 
-    get_recommended_item_for_user('AE7',users_have_features['A1220335170'])
-    df_total[['fundid','userid']].apply(lambda row,mapper:mapper(row[0],row[1]) ,
-            args=(get_recommended_item_for_user,))
+#    get_recommended_item_for_user('AE7',users_have_features['A1220335170'])
+    df_total = df2
+    
+    def get_items_features(row):
+        fundid = row['fundid']
+        userid = row['userid']
+        common_features_list = list(get_recommended_item_for_user(fundid,
+                                      users_have_features[userid]))
+        return ','.join(common_features_list)
+#    get_items_features(fundids[1],userids[9])
+    df_total['tag_features'] = df_total[['fundid','userid']].apply(get_items_features,axis=1)
+    
+            
