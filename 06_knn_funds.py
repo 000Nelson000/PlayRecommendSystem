@@ -46,6 +46,7 @@ if __name__ == "__main__":
     import scipy.sparse as sp          
     import sqlalchemy
     import pickle
+    import time
     
     
     df_inter = pd.read_csv('./funds/purchase.csv',encoding='cp950')
@@ -130,21 +131,36 @@ if __name__ == "__main__":
     # =============================================================================
     #  model
     # =============================================================================
-    
+    t1 = time.time()
     ## ibcf
     model_i = KNNmodel(train,kind='ibcf')
     model_i.jaccard_sim()
-    model_i.fit(topK=50,remove=True)
+    model_i.fit(topK=100,remove=True)
+    t2 = time.time()
+    print('\n***'*10)
+    print('time cost for ibcf:{:.1f}s'.format(t2-t1))
     ## ubcf
+    t1 = time.time()
     model_u = KNNmodel(train,kind='ubcf')
     model_u.jaccard_sim()
-    model_u.fit(topK=50,remove=True)
+    model_u.fit(topK=100,remove=True)
+    t2 = time.time()
+    print('\n***'*10)
+    print('time cost for ubcf:{:.1f}s'.format(t2-t1))
     ## popular
+    t1 = time.time()
     model_p = KNNmodel(train,kind='popular')
-    model_p.fit(topK=50,remove=True)
+    model_p.fit(topK=100,remove=True)
+    t2 = time.time()
+    print('\n***'*10)
+    print('time cost for popular:{:.1f}s'.format(t2-t1))
     ## ubcf-fs
+    t1 = time.time()
     model_fs = KNNmodel(train,kind='ubcf_fs')
     model_fs.fit(topK=100,user_features = train_ufs,remove=True)
+    t2 = time.time()
+    print('\n***'*10)
+    print('time cost for ubcf_fs:{:.1f}s'.format(t2-t1))
     #%%
     # =============================================================================
     # evaluate recall

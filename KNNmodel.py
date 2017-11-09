@@ -45,8 +45,8 @@ class KNNmodel:
         
         similarities = ab.tocoo(copy=True)
         similarities.data /= (aa + bb - ab.data)
-        del aa,bb,ab
-        similarities = similarities.astype('float32')
+        del aa,bb,ab # large memory cost 
+#        similarities = similarities.astype('float32')
         similarities.setdiag(0)
         similarities = similarities.tocsr()
         similarities.eliminate_zeros()
@@ -242,10 +242,10 @@ class KNNmodel:
             top N recommeded items idx array for uids
         """
         if self.kind in ('ibcf','ubcf','popular','ubcf_fs'):
-            topNarray = np.zeros((uids.shape[0],topN))
+            topNarray = np.zeros((uids.shape[0],topN),dtype=int)
             for _idx,_id in enumerate(uids):
                 topNarray[_idx,:] = np.argsort(self.rating[_id,:].A,kind='heapsort')[:,:-topN-1:-1]
-            # topNarray = np.argsort(self.rating[uids,:].A,kind='heapsort')[:,:-topN-1:-1]
+
             self.topN = topN
             return topNarray
 
@@ -255,11 +255,16 @@ class KNNmodel:
         """
         params
         ======
-        pred_all:
-        test:
-        pred:
-        method: (str) precision/recall/...
-
+        
+        pred_all:(ndarray) 
+            predicted/recommended result for each user 
+            
+        test:(csr_matrix)
+            testing sets(test.shape[0] should be same as pred_all.shape[0])
+            
+        method: (str) precision(default), recall
+            evaluate method 
+            
         attribute
         =========
         precision

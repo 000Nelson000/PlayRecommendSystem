@@ -19,7 +19,7 @@ import numpy as np
 import lightfm
 import pickle 
 import pandas as pd 
-
+import time 
 #fundid_names_df.to_csv('./funds/fundid_to_name.csv',index=False)
 
 with open('./funds/sp_funds_datasets.pickle','rb') as f:
@@ -39,17 +39,20 @@ fundid_to_names = {}
 for d in fundid_names_df.to_dict('records'):
     fundid_to_names[d['基金代碼']] = d['基金中文名稱']
 #%% 
-model = LightFM(learning_rate=0.01, loss='warp')
-model.fit(train, epochs=10)
+t1 = time.time()
+model_lr = LightFM(learning_rate=0.01, loss='warp')
+model_lr.fit(train, epochs=10)
+t2 = time.time()
+print('model built (lightfm) cost :{:.1f} s'.format(t2-t1))
+train_precision = precision_at_k(model_lr, train, k=10).mean()
+test_precision = precision_at_k(model_lr, test, k=10).mean()
+train_recall = recall_at_k(model_lr,train,k=10).mean()
+test_recall = recall_at_k(model_lr,test,k=10).mean()
 
-train_precision = precision_at_k(model, train, k=10).mean()
-test_precision = precision_at_k(model, test, k=10).mean()
-train_recall = recall_at_k(model,train,k=10).mean()
-test_recall = recall_at_k(model,test,k=10).mean()
-
-train_auc = auc_score(model, train).mean()
-test_auc = auc_score(model, test).mean()
-print('Recall: train {:.2f}%, test {:.2f}%'.format(100*train_recall,100*test_recall))
+train_auc = auc_score(model_lr, train).mean()
+test_auc = auc_score(model_lr, test).mean()
+## on test : Recall- 19.30%, Precision- 1.93%, (AUC-0.91)
+print('Recall: train {:.2f}%, test {:.2f}%'.format(100*train_recall,100*test_recall)) 
 print('Precision: train {:.2f}% , test {:.2f}%.'.format(100*train_precision, 100*test_precision))
 print('AUC: train {:.2f}, test {:.2f}.'.format(train_auc, test_auc))
 

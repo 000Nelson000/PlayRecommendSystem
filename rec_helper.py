@@ -14,7 +14,7 @@ from sklearn.preprocessing import binarize
 from tqdm import tqdm 
 
 def threshold_interaction(df,rowname,colname,row_min=1,col_min=10):
-    """limit interaction(u-i) dataframe greater than row_min numbers 
+    """limit interaction(u-i) dataframe greater than row_min numbers, col_min 
     
     Parameters
     ----------
