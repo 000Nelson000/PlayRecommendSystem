@@ -13,7 +13,7 @@ import  scipy.sparse as sp
 from sklearn.preprocessing import binarize
 from tqdm import tqdm 
 
-def threshold_interaction(df,rowname,colname,row_min=1):
+def threshold_interaction(df,rowname,colname,row_min=1,col_min=10):
     """limit interaction(u-i) dataframe greater than row_min numbers 
     
     Parameters
@@ -25,7 +25,9 @@ def threshold_interaction(df,rowname,colname,row_min=1):
     colname: 
         name of item(Iid)
     row_min:
-        min numbers        
+        min numbers for rowname
+    col_min:
+        min numbers for colname
     """
     n_rows = df[rowname].unique().shape[0]
     n_cols = df[colname].unique().shape[0]
@@ -37,10 +39,13 @@ def threshold_interaction(df,rowname,colname,row_min=1):
 
     df_groups = df.groupby([rowname,colname])[colname].count()
     row_counts = df_groups.groupby(rowname).count()
-#    col_counts = df.groupby(colname)[rowname]
+    col_counts = df.groupby(colname)[rowname].count()
     uids = row_counts[row_counts > row_min].index.tolist() # lists of uids purchasing item greater than row_min
+    itemids = col_counts[col_counts > col_min].index.tolist()
     
-    df2 = df[df[rowname].isin(uids)]
+    df = df[df[rowname].isin(uids)]
+    df2 = df[df[colname].isin(itemids)]
+    
     
     n_rows2 = df2[rowname].unique().shape[0]
     n_cols2 = df2[colname].unique().shape[0]
