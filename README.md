@@ -8,24 +8,23 @@ This is the place I try to figure out how to implement recommendation algos
 
 ## Algos
 
-- [v] nearest neighbor (User-Based CF, Item-Based CF)
-	- [ ] issue: very inefficient to compute pairwise similarity(distance)
+-  nearest neighbor (User-Based CF, Item-Based CF)
+	- [ ] issue: very inefficient to compute pairwise similarity(distance)	
 
-- [o] explicit matrix factorization (ALS, SGD ...)
+- explicit matrix factorization (ALS, SGD ...)
 
-- [o] implicit matrix factorization 
+- implicit matrix factorization 
 
-- [v] web-based funds recommendation 
+- web-based funds recommendation, [demo code](https://github.com/ihongChen/PlayRecommendSystem/tree/master/funds_web)
 
-- [ ] LightFM 
-	- [v] not fully understand (try it first!) 
+- [v] LightFM 
 	
-- [ ] Approximate Nearest Neighbors
-	- [v] issue: can't install properyly under windows env 
+- Approximate Nearest Neighbors
+	-  issue: can't install properyly under windows env (solved)
 		- annoy -- ubuntu16.04, windows server2012 (update conda to python 3.6 version)
 		- nmslib -- failed
-	- [ ] how to use it properly?
-
+	-  how to use it properly?
+		- [example](https://github.com/ihongChen/PlayRecommendSystem/blob/master/LightFM_ANN_example.py)
 
 ## Notebooks
 
