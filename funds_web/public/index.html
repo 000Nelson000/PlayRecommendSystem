@@ -25,12 +25,15 @@
 </head>
 
 <body ng-controller="MainCtrl">
+	
 	<h1>基金推薦Demo</h1>
+	
+
 	隨便來一個看看:
 	<button ng-click="getRecommendation(rand=true)">點我點我</button>
 	<br/>
 	<br/> 用戶:
-	<input type="text" ng-model="uid"> 
+	<input type="text" ng-model="uid">
 	<button ng-click="getRecommendation(rand=false)">按我查詢</button>
 	<h2>0. 購買紀錄</h2>
 	<table class='table'>
@@ -39,7 +42,7 @@
 			<th>基金名稱</th>
 			<th>規模區間</th>
 			<th>投資屬性</th>
-			<th>今年報酬率(%)</th>
+			<th>今年報酬率(%)</th>			
 		</tr>
 		<tr ng-repeat="item in buylists">
 			<td>{{$index + 1}}</td>
@@ -58,14 +61,18 @@
 			<th>基金代碼</th>
 			<th>基金名稱</th>
 			<th>境內外</th>
-			<th>今年報酬率(%)</th>
+			<th>投資區域</th>
+			<th>淨值</th>
+			<th>今年報酬率(%)</th>			
 		</tr>
 		<tr ng-repeat="item in popLists">
 			<td>{{$index + 1 }}</td>
 			<td>{{item["基金代碼"]}}</td>
 			<td>{{item["基金名稱"]}}</td>
 			<td>{{item["境內外"]}}</td>
-			<td>{{item["自今年以來報酬率(%)"]}}</td>
+			<td>{{item["投資區域"]}}</td>
+			<td>{{item["淨值"]}}</td>
+			<td>{{item["自今年以來報酬率(%)"]}}</td>			
 		</tr>
 	</table>
 	<br/>
@@ -77,14 +84,20 @@
 			<th>基金代碼</th>
 			<th>基金名稱</th>
 			<th>境內外</th>
+			<th>投資區域</th>
+			<th>淨值</th>
 			<th>今年報酬率(%)</th>
+			<th>推薦理由</th>
 		</tr>
 		<tr ng-repeat="item in ubcfLists">
 			<td>{{$index + 1 }}</td>
 			<td>{{item["基金代碼"]}}</td>
 			<td>{{item["基金名稱"]}}</td>
 			<td>{{item["境內外"]}}</td>
+			<td>{{item["投資區域"]}}</td>
+			<td>{{item["淨值"]}}</td>
 			<td>{{item["自今年以來報酬率(%)"]}}</td>
+			<td>{{item["基金特徵"]}}</td>
 		</tr>
 	</table>
 	<br/>
@@ -97,20 +110,26 @@
 			<th>基金代碼</th>
 			<th>基金名稱</th>
 			<th>境內外</th>
+			<th>投資區域</th>
+			<th>淨值</th>
 			<th>今年報酬率(%)</th>
+			<th>推薦理由</th>
 		</tr>
 		<tr ng-repeat="item in ubcffsLists">
 			<td>{{$index + 1 }}</td>
 			<td>{{item["基金代碼"]}}</td>
 			<td>{{item["基金名稱"]}}</td>
 			<td>{{item["境內外"]}}</td>
+			<td>{{item["投資區域"]}}</td>
+			<td>{{item["淨值"]}}</td>
 			<td>{{item["自今年以來報酬率(%)"]}}</td>
+			<td>{{item["基金特徵"]}}</td>
 		</tr>
 	</table>
 	<script>
 
 		var app = angular.module("recommendApp", []);
-		
+
 		function MainCtrl($scope, $http) {
 			var historyAPI = "http://dbm_public:8000/history/";
 			var modelPopAPI = "http://dbm_public:8000/model/popular/"
@@ -130,23 +149,23 @@
 				'A1222157890'];
 
 
-			$scope.getRecommendation = function (rand) {				
+			$scope.getRecommendation = function (rand) {
 				// console.log('typeof user:' + typeof(user))
 				// if (typeof(user) === "undefined"){
 				// 	var uid = idTests[Math.floor(Math.random() * idTests.length)];
 				// }else if (typeof(user) === string && user.length<=10) {
 				// 	var uid = idTests[Math.floor(Math.random() * idTests.length)];
-					
+
 				// } else {
 				// 	$scope.uid = user;
 				// 	var uid = user;
 				// }
-				if (rand){
+				if (rand) {
 					var uid = idTests[Math.floor(Math.random() * idTests.length)];
 				} else {
 					var uid = $scope.uid;
 				}
-				
+
 				console.log('uid: ' + uid);
 
 				$http
@@ -181,7 +200,7 @@
 					});
 			}
 			// console.log($scope.uid)
-			$scope.getRecommendation(rand=true);
+			$scope.getRecommendation(rand = true);
 		}
 	</script>
 </body>

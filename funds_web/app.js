@@ -6,9 +6,9 @@ var sql = require('mssql');
 
 // database config
 var config = {
-  user: 'xx',
-  password: 'xxxxxxx',
-  server: 'xxxxxxx',
+  user: 'sa',
+  password: '01060728',
+  server: 'dbm_public',
   database: 'Test',
   options: {
     tdsVersion: '7_1',
