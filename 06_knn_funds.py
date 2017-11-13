@@ -322,7 +322,18 @@ if __name__ == "__main__":
     ##### find purchased items-features for a give userid ######
     ## df_gt2: this is all transaction data
     def get_features_given_uid(uid,df):
-        """get features for a given uid and transaction data df        
+        """get features for a given uid and transaction data df
+        
+        params
+        ======
+        uid: (str)
+            user id account
+        df:(pd.dataframe)
+            transaction data
+        
+        return
+        ======
+        a set of user features        
         """
         purchased_fundids = df[df['身分證字號']==uid]['基金代碼'].unique().tolist()
         user_features = set()
@@ -339,7 +350,7 @@ if __name__ == "__main__":
         fund_features = set(funds_f[itemid])
         return fund_features.intersection(have_features)
 
-    get_recommended_item_for_user('F80',user1_have_features)
+#    get_recommended_item_for_user('F80',user1_have_features)
     
     ##### users have features ####
     users_have_features = {}
