@@ -7,7 +7,7 @@ This is the place I try to figure out how to implement recommendation algos
 - sketchFab
 
 ## Algos
-
+-  content based 
 -  nearest neighbor (User-Based CF, Item-Based CF)
 	- [ ] issue: very inefficient to compute pairwise similarity(distance)	
 
@@ -17,7 +17,7 @@ This is the place I try to figure out how to implement recommendation algos
 
 - web-based funds recommendation, [demo code](https://github.com/ihongChen/PlayRecommendSystem/tree/master/funds_web)
 
-- [v] LightFM 
+- LightFM 
 	
 - Approximate Nearest Neighbors
 	-  issue: can't install properyly under windows env (solved)

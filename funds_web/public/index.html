@@ -55,6 +55,7 @@
 	<br/>
 	<br/>
 	<h2>1. 熱門基金</h2>
+	準確度(recall): 20.1%
 	<table class="table">
 		<tr>
 			<th></th>
@@ -77,7 +78,8 @@
 	</table>
 	<br/>
 	<br/>
-	<h2>2. 相似的人也買</h2>
+	<h2>2. 協同過濾法(用戶)</h2>
+	準確度(recall): 28.2%
 	<table class="table">
 		<tr>
 			<th></th>
@@ -102,8 +104,8 @@
 	</table>
 	<br/>
 	<br/>
-	<h2>3. 資產規模/購買風格接近的人也買</h2>
-
+	<h2>3. 特徵抽取-協同過濾法(用戶)</h2>
+	準確度(recall): 31.9%
 	<table class="table">
 		<tr>
 			<th></th>
@@ -126,23 +128,52 @@
 			<td>{{item["基金特徵"]}}</td>
 		</tr>
 	</table>
+	<br/>
+	<br/>
+	<h2>4. 基於內容推薦 </h2>
+	準確度(recall): 10.5%
+	<table class="table">
+		<tr>
+			<th></th>
+			<th>基金代碼</th>
+			<th>基金名稱</th>
+			<th>境內外</th>
+			<th>投資區域</th>
+			<th>淨值</th>
+			<th>今年報酬率(%)</th>
+			<th>推薦理由</th>
+		</tr>
+		<tr ng-repeat="item in ubcfcbLists">
+			<td>{{$index + 1 }}</td>
+			<td>{{item["基金代碼"]}}</td>
+			<td>{{item["基金名稱"]}}</td>
+			<td>{{item["境內外"]}}</td>
+			<td>{{item["投資區域"]}}</td>
+			<td>{{item["淨值"]}}</td>
+			<td>{{item["自今年以來報酬率(%)"]}}</td>
+			<td>{{item["基金特徵"]}}</td>
+		</tr>
+	</table>
+
 	<script>
 
 		var app = angular.module("recommendApp", []);
 
 		function MainCtrl($scope, $http) {
 			var historyAPI = "http://dbm_public:8000/history/";
-			var modelPopAPI = "http://dbm_public:8000/model/popular/"
-			var modelUbcfAPI = "http://dbm_public:8000/model/ubcf/"
-			var modelUbcfFsAPI = "http://dbm_public:8000/model/ubcf_fs/"
-			var idTests = ['A1221227000',
-				'A1221880930',
+			var modelPopAPI = "http://dbm_public:8000/model/popular/";
+			var modelUbcfAPI = "http://dbm_public:8000/model/ubcf/";
+			var modelUbcfFsAPI = "http://dbm_public:8000/model/ubcf_fs/";
+			var modelContentAPI = "http://dbm_public:8000/model/content_based/";
+
+			var idTests = [
+				'A1781398170',
+				'A1222003560',
 				'A1273453200',
 				'A1595640150',
 				'A1239887050',
 				'A1254207550',
-				'A1595831960',
-				'A1220700610',
+				'A1595831960',				
 				'A1220379530',
 				'A1221816710',
 				'A1221220140',
@@ -198,6 +229,12 @@
 						$scope.ubcffsLists = result3;
 						$scope.uid = uid;
 					});
+				$http
+				.get(modelContentAPI + uid)
+				.success(function (result4) {					
+					$scope.ubcfcbLists = result4;
+					$scope.uid = uid;
+				});
 			}
 			// console.log($scope.uid)
 			$scope.getRecommendation(rand = true);
