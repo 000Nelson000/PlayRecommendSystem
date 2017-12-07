@@ -5,6 +5,7 @@ __pycache__/
 
 # data
 rec-a-sketch/
+lastfm-dataset-360k/
 res_fm_no_feat.pickle
 # node
 node_modules/

@@ -5,6 +5,7 @@ This is the place I try to figure out how to implement recommendation algos
 - movielens
 - funds
 - sketchFab
+- lastfm
 
 ## Algos
 - content based [demo code](https://github.com/ihongChen/PlayRecommendSystem/blob/master/cb_funds.ipynb)
