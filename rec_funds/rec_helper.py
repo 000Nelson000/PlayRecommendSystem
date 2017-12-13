@@ -98,7 +98,7 @@ def df_to_spmatrix(df, rowname, colname, binary=True):
     
     I = df[rowname].apply(map_ids, args=[rid_to_idx]).as_matrix()
     J = df[colname].apply(map_ids, args=[cid_to_idx]).as_matrix()
-    V = np.ones(I.shape[0])    
+    V = np.ones(I.shape[0])
     interactions = sp.coo_matrix((V,(I,J)),dtype='int32')
     if binary:
         interactions = binarize(interactions) # also coo convert to csr 

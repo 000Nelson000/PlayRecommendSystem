@@ -251,7 +251,8 @@ if __name__ == "__main__":
     # =============================================================================
     # 推薦標的分數/清單(numpy array)
     # =============================================================================
-    predall_itemid_fs,predall_rating_fs = get_itemids_ratings_np(model_fs,predall_ufs)
+    predall_itemid_fs, predall_rating_fs = get_itemids_ratings_np(
+        model_fs, predall_ufs)
     predall_itemid_u,predall_rating_u = get_itemids_ratings_np(model_u,predall_u)
     predall_itemid_p,predall_rating_p = get_itemids_ratings_np(model_p,predall_p)
 
@@ -289,7 +290,7 @@ if __name__ == "__main__":
         i_features = row.values
         iid = i_features[0]
         for idx, feat in enumerate(i_features):
-            if feat!=None and str(feat)!='nan' and idx!= 0:                
+            if feat!=None and str(feat)!='nan' and idx!= 0:         
                 temp_f.append(feat)
         funds_f[iid] = temp_f
     
