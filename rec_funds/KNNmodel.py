@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+Implement recommendation based on collaborative filtering k-nearest neighbors(KNN) model,
+
 Created on Mon Oct 23 10:41:13 2017
 
 @author: 116952
