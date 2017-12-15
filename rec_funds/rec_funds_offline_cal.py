@@ -138,7 +138,7 @@ def load_data(con):
     }
 
 
-def model_eval(train, test, users_feats_sp):
+def model_eval(train, test, users_feats_sp,topN=10):
     """評估以下模型在測試集準確度(`recall`)
     1. :ibcf : 以物品為基礎的相似度模型
     2. :ubcf : 以用戶為基礎的相似度模型
@@ -152,6 +152,11 @@ def model_eval(train, test, users_feats_sp):
     `test`  (sp.csr_matrix)
 
     `users_feats_sp` (sp.csr_matrix) 
+
+    return 
+    =====
+    (dataframe)
+    model, recall, eval_time, num_users, num_funds, topN, date
     """
 
     #### ibcf (jaccard) #####
@@ -167,16 +172,16 @@ def model_eval(train, test, users_feats_sp):
     #### 評估模型結果 ###
     uids = np.arange(0, train.shape[0])
     print('====== model evaluation (jaccard similarity) =====')
-    predall_u = model_u.predict(uids, topN=10)  # np array (itemidx)
+    predall_u = model_u.predict(uids, topN=topN)  # np array (itemidx)
     model_u.evaluate(predall_u, test, method='recall')  # 29.27
 
-    predall_i = model_i.predict(uids, topN=10)  # nparray (itemidx)
+    predall_i = model_i.predict(uids, topN=topN)  # nparray (itemidx)
     model_i.evaluate(predall_i, test, method='recall')  # 12.71
 
-    predall_p = model_p.predict(uids, topN=10)  # nparray (itemidx)
+    predall_p = model_p.predict(uids, topN=topN)  # nparray (itemidx)
     model_p.evaluate(predall_p, test, method='recall')  # 20.08
 
-    predall_ufs = model_ufs.predict(uids, topN=10)
+    predall_ufs = model_ufs.predict(uids, topN=topN)
     model_ufs.evaluate(predall_ufs, test, method='recall')
 
     recall_p = float("{:.4f}".format(model_p.recall))
@@ -189,7 +194,7 @@ def model_eval(train, test, users_feats_sp):
     ## 寫入log ###
     with open('evaluation.log', 'a', encoding='utf8') as f:
 
-        time_elapse = '''*************** Date: {0} *****************\n
+        time_elapse = '''\n*************** Date: {0} *****************\n
         evaluation time ...
 
         --------------------------
@@ -201,8 +206,9 @@ def model_eval(train, test, users_feats_sp):
         '''.format(now_str, dt_ibcf, dt_ubcf, dt_ufs, dt_pop)
 
         recall_eva = '''\n\t***** model evaluation *****\n
-        numbers of users :{:^5}
-        numbers of funds :{:^5}
+        numbers of users           :{:^5}
+        numbers of funds           :{:^5}
+        numbers of recommendation  :{:^5}
         
         recall
         --------------------------
@@ -211,7 +217,7 @@ def model_eval(train, test, users_feats_sp):
         ubcf:   {:^10.1f}%
         ubcf_fs:{:^10.1f}%
         --------------------------
-        '''.format(train.shape[0],train.shape[1],
+        '''.format(train.shape[0],train.shape[1],topN,
                    recall_p * 100, recall_i * 100, recall_u * 100, recall_ufs * 100)
 
         f.write(time_elapse)
@@ -227,6 +233,7 @@ def model_eval(train, test, users_feats_sp):
         'eval_time': time_lst,
         'num_users': train.shape[0],
         'num_funds': train.shape[1],
+        'topN' : topN,
         'date': now.strftime('%Y%m%d')
     })
 
@@ -264,23 +271,31 @@ def build_model(sp_data, kind, topK=100, users_feats_sp=None):
 
 
 def recommender_lists(
-        purchased_ui, idx_to_itemid, idx_to_userid, users_feats_sp):
+        purchased_ui, idx_to_itemid, idx_to_userid, users_feats_sp,topN=10):
     """基於交易資料建立推薦清單
     params
     =====
-    `purchased_ui` (sp.csr_matrix)
+    `purchased_ui` (sp.csr_matrix)        
 
     `idx_to_itemid` (dict)
+        lookup table for idx to itemid
 
     `idx_to_userid` (dict)
+        lookup table for idx to userid 
 
     `users_feats_sp` (sp.csr_matrix)
+        users features matrix align w.r.t useridx
+
+    `topN` 
+        numbers of recommendation items
     """
     assert isinstance(purchased_ui, sp.spmatrix)
 
     ############## built recommender #####################
     now = datetime.datetime.now()
     now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    num_users = purchased_ui.shape[0]
+    num_funds = purchased_ui.shape[1]
 
     #### ibcf (jaccard)
     dt_ibcf, model_i = build_model(purchased_ui, kind='ibcf', topK=100)
@@ -340,15 +355,26 @@ def recommender_lists(
 
     # write to log
     with open('build_recommender.log', 'a') as f:
-        messages = '''*************** Date: {0} *****************\n
-        recommender KNN model built for...
-        ibcf   : {1:^5},
-        ubcf   : {2:^5},
-        ubcf_fs: {3:^5},
-        popular: {4:^5}
-        =============================
-        arrange: {5:^5}
-        '''.format(now_str, dt_ibcf, dt_ubcf, dt_ufs, dt_pop, dt_arange_df)
+        messages = '''\n\n\n*************** Date: {} *****************\n
+        
+        
+        numbers of users           :{:^5}
+        numbers of funds           :{:^5}
+        numbers of recommendation  :{:^5}
+
+        -----------------------------------
+        KNN model built time...
+
+        ibcf   : {:^5},
+        ubcf   : {:^5},
+        ubcf_fs: {:^5},
+        popular: {:^5}
+        -----------------------------------
+        data post processing
+
+        to dataframe : {:^5}
+        '''.format(now_str, num_users, num_funds, topN,
+        dt_ibcf, dt_ubcf, dt_ufs, dt_pop, dt_arange_df)
         f.write(messages)
 
     return df_rec_total
@@ -443,6 +469,8 @@ def save_df_to_msdb(con, df, tablename, data_append=True):
         fields = ','.join(['[' + e + ']' for e in k])
         row = [None if pd.isnull(e) else e for e in v]
         cursor.execute(sql_insert.format(tablename, fields, num_quest), row)
+        if (idx+1) % 1000 == 0 and idx !=0 :
+            print('rows {} inserted...'.format(idx+1))
 
     cursor.commit()
 
@@ -492,8 +520,14 @@ def get_recommended_item_for_user(itemid, have_features, funds_f):
     ======
     (set) 
     """
-    fund_features = set(funds_f.get(itemid))
-    return fund_features.intersection(have_features)
+    try:
+        fund_features = set(funds_f.get(itemid))
+        common_feats = fund_features.intersection(have_features)
+        return common_feats
+    except TypeError:
+        print('No fundid:{} in mma'.format(itemid))
+        return []
+    
 
 def built_items_features_lookup_table(df_item_features):
     '''establish items features look up table
@@ -550,6 +584,7 @@ def reason_tags(df_purchased, df_recommend, df_item_features):
         items(funds) features table (base on fundids)
     """
     #### establish items features look up table ######
+    t0 = time.time()
     funds_feat_lookup_dict = built_items_features_lookup_table(df_item_features)
 
     ##### users have features ####
@@ -566,24 +601,55 @@ def reason_tags(df_purchased, df_recommend, df_item_features):
                                                                   funds_feat_lookup_dict)
                                                                   )
         return ','.join(common_features_list)
+    
     df_recommend['tag_features'] = df_recommend[['fundid','userid']].apply(get_items_features,axis=1)
+    
+    ## time cost ###
+    t1 = time.time()
+    dt = int(t1 - t0)
+    m,s = divmod(dt,60)
+    h,m = divmod(m, 60)
+    dt = "{}:{:02}:{:02}".format(h, m, s)  # h:m:s
+
+    with open('build_recommender.log', 'a') as f:
+        messages = '''                                
+        tag features : {:^5}'''.format(dt)
+        f.write(messages)
+
     return df_recommend
 
 
 if __name__ == '__main__':
-    pass
-    # con = pypyodbc.connect(
-    #     "DRIVER={SQL Server};SERVER=dbm_public;UID=sa;PWD=01060728;DATABASE=project2017")
+    # pass
+    # db connect
+    con = pypyodbc.connect(
+        "DRIVER={SQL Server};SERVER=dbm_public;UID=sa;PWD=01060728;DATABASE=project2017")
 
     # ###### evaluate model #######
-    # data = load_data(con)
-    # train = data['eval_data']['train']
-    # test = data['eval_data']['test']
-    # users_feats_sp = data['users_feats']['sp']
-    # df_gt2 = data['purchased_df']
-    # eval_result = model_eval(train, test, users_feats_sp)
+    data = load_data(con)
+    train = data['eval_data']['train']
+    test = data['eval_data']['test']
+    users_feats_sp = data['users_feats']['sp']
+    df_purchased = data['purchased_df']
 
+    print('data load complete...')
+    # eval_result = model_eval(train, test, users_feats_sp,topN=10)
+        
+    # save_df_to_msdb(con, eval_result, tablename='基金推薦_模型評估', data_append=True)
+    
     # ###### recommendation ######
-    # purchased_ui = data['purchased_ui']
-    # ###### features tag ########
-    # df_item_features = pd.read_sql("select * from 基金推薦_申購基金特徵", con)
+    idx_to_itemid = data['idx_to_itemid']
+    idx_to_userid = data['idx_to_userid']
+    purchased_ui = data['purchased_ui']
+    
+    df_rec_tot = recommender_lists(
+        purchased_ui,idx_to_itemid,idx_to_userid,users_feats_sp,topN=10)
+
+    # ### tag_features 
+    df_item_features = pd.read_sql("select * from 基金推薦_申購基金特徵", con)
+    df_rec_total = reason_tags(df_purchased,df_rec_tot, df_item_features)
+    
+    save_df_to_msdb(con, df_rec_total,
+                    tablename='基金推薦_推薦清單', data_append=False)
+
+    

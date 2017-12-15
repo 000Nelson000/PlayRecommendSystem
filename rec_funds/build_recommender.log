@@ -1,0 +1,81 @@
+*************** Date: 2017-12-15 09:57:58 *****************
+
+        recommender KNN model built for...
+        ibcf   : 0:01:00,
+        ubcf   : 0:01:22,
+        ubcf_fs: 0:15:08,
+        popular: 0:00:06
+        =============================
+        arrange: 0:02:14
+        *************** Date: 2017-12-15 11:15:03 *****************
+
+        recommender KNN model built for...
+        ibcf   : 0:01:00,
+        ubcf   : 0:01:22,
+        ubcf_fs: 0:15:08,
+        popular: 0:00:06
+        =============================
+        arrange: 0:02:18
+        
+*************** Date: 2017-12-15 15:07:50 *****************
+
+        numbers of users           :19748
+        numbers of funds           : 2028          
+	numbers of recommendation  :   10
+
+        -----------------------------------         
+	KNN model built time...   
+       
+	ibcf   : 0:00:58,         
+	ubcf   : 0:01:20,         
+	ubcf_fs: 0:14:56,         
+	popular: 0:00:06         
+	-----------------------------------         
+	data post processing          
+	
+	to dataframe : 0:02:12
+
+       
+*************** Date: 2017-12-15 16:07:25 *****************
+
+        
+        
+        numbers of users           :19748
+        numbers of funds           :2028 
+        numbers of recommendation  : 10  
+
+        -----------------------------------
+        KNN model built time...
+
+        ibcf   : 0:01:02,
+        ubcf   : 0:01:23,
+        ubcf_fs: 0:15:13,
+        popular: 0:00:06
+        -----------------------------------
+        data post processing
+
+        to dataframe : 0:02:15
+        
+
+
+*************** Date: 2017-12-15 16:47:22 *****************
+
+        
+        
+        numbers of users           :19748
+        numbers of funds           :2028 
+        numbers of recommendation  : 10  
+
+        -----------------------------------
+        KNN model built time...
+
+        ibcf   : 0:01:02,
+        ubcf   : 0:01:22,
+        ubcf_fs: 0:15:10,
+        popular: 0:00:06
+        -----------------------------------
+        data post processing
+
+        to dataframe : 0:02:16
+                                        
+        tag features : 0:09:07
