@@ -10,7 +10,7 @@ TO DO
     -  [x] ALS
     -  [x] learning to rank
 
-- [ ] 清單產出
-    - [x] 推薦明細(per User & model)
-    - [ ] 推薦原因(ibcf,ubcf,ubcf_fs)
+- [x] 清單產出
+    - [x] 推薦明細(per User & model) 
+    - [x] 推薦原因(ibcf,ubcf,ubcf_fs)
 

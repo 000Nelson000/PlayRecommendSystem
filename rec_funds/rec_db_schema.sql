@@ -20,8 +20,8 @@ CREATE TABLE 基金推薦_推薦清單(
 	fundid varchar(10),
 	userid varchar(15),
 	model varchar(10),
-	score decimal(7,6),
-	tag_features varchar(200)
+	score decimal(8,6),
+	tag_features varchar(300)
 )
 
 CREATE TABLE 基金推薦_模型評估(
@@ -32,4 +32,6 @@ CREATE TABLE 基金推薦_模型評估(
 	num_funds int,
 	topN smallint,
 	[date] varchar(8)	
-)  
+)
+
+

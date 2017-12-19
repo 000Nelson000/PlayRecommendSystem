@@ -294,6 +294,7 @@ def recommender_lists(
     ############## built recommender #####################
     now = datetime.datetime.now()
     now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    yyyymmdd = now.strftime("%Y%m%d")
     num_users = purchased_ui.shape[0]
     num_funds = purchased_ui.shape[1]
 
@@ -346,6 +347,7 @@ def recommender_lists(
     df_rec_total = pd.concat(
         [rec_ibcf_df, rec_ubcf_df, rec_ufs_df, rec_pop_df])
     df_rec_total['rank'] = df_rec_total.index + 1
+    df_rec_total['yyyymmdd'] = yyyymmdd
 
     t1 = time.time()
     dt_arange_df = int(t1 - t0)  # sec
