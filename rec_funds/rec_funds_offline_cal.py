@@ -259,7 +259,7 @@ def build_model(sp_data, kind, topK=100, users_feats_sp=None):
     model = KNNmodel(sp_data, kind=kind)
     if kind in ('ubcf', 'ibcf'):
         model.jaccard_sim()
-    model.fit(topK=topK, user_features=users_feats_sp, remove=True)
+    model.fit(topK=topK, user_features=users_feats_sp, remove=True) ## 移除
     t2 = time.time()
     dt = int(t2 - t1)
     m, s = divmod(dt, 60)
@@ -316,7 +316,21 @@ def recommender_lists(
     predall_u = model_u.predict(uids, topN=10)
     predall_ufs = model_ufs.predict(uids, topN=10)
     predall_p = model_p.predict(uids, topN=10)
+    ############# 已經購買的基金模型評分 ####################
+    sp_pur_rat_i = model_i.rating_pur
+    sp_pur_rat_u = model_u.rating_pur
+    sp_pur_rat_p = model_p.rating_pur
+    sp_pur_rat_ufs = model_ufs.rating_pur
 
+    rec_ibcf_pur_df = arrange_purchased_rating_to_df(
+        sp_pur_rat_i,idx_to_userid,idx_to_itemid,'ibcf')
+    rec_ubcf_pur_df = arrange_purchased_rating_to_df(
+        sp_pur_rat_u,idx_to_userid,idx_to_itemid,'ubcf')
+    rec_pop_pur_df = arrange_purchased_rating_to_df(
+        sp_pur_rat_p,idx_to_userid,idx_to_itemid,'popular')
+    rec_ufs_pur_df = arrange_purchased_rating_to_df(
+        sp_pur_rat_ufs,idx_to_userid,idx_to_itemid,'ubcf_fs')
+    
     ############# 推薦標的分數/清單(numpy array) ############
     predall_itemid_i, predall_rating_i = get_itemids_ratings_np(
         model_i, predall_i, idx_to_itemid)
@@ -329,6 +343,7 @@ def recommender_lists(
 
     predall_itemid_p, predall_rating_p = get_itemids_ratings_np(
         model_p, predall_p, idx_to_itemid)
+
 
     ############# 整理成 dataframe ############
 
@@ -348,6 +363,10 @@ def recommender_lists(
         [rec_ibcf_df, rec_ubcf_df, rec_ufs_df, rec_pop_df])
     df_rec_total['rank'] = df_rec_total.index + 1
     df_rec_total['yyyymmdd'] = yyyymmdd
+    df_rec_total = pd.concat([df_rec_total, rec_ibcf_pur_df,
+                              rec_ubcf_pur_df, 
+                              rec_pop_pur_df,
+                              rec_ufs_pur_df])
 
     t1 = time.time()
     dt_arange_df = int(t1 - t0)  # sec
@@ -420,6 +439,43 @@ def get_itemids_ratings_np(model, predall, idx_to_itemid):
     predall_rating = np.sort(rating.A, axis=1, kind='heapsort')[
         :, :-model.topN - 1:-1]
     return predall_itemid, predall_rating
+
+def arrange_purchased_rating_to_df(sp_pur_rating, 
+                                   idx_to_userid,
+                                    idx_to_itemid,
+                                    kind):
+    """arrange purchased u-i rating matrix (sp_csr_matrix) to dataframe
+    params
+    ======
+    sp_pur_rating: (csr matrix)
+        purchased items rating based on model calculation
+    idx_to_userid : (dict)
+    idx_to_itemid : (dict)
+    kind: (str)
+        name of model
+    """
+    now = datetime.datetime.now()
+    yyyymmdd = now.strftime("%Y%m%d")
+    assert isinstance(sp_pur_rating,sp.csr_matrix), 'should be sp.csr_matrix'
+    rating_pur_coo = sp_pur_rating.tocoo()
+    row = rating_pur_coo.row
+    col = rating_pur_coo.col
+    data = rating_pur_coo.data
+    uids = []
+    fundids = []
+    scores = []
+
+    for i,j,v in zip(row,col,data):
+        uids.append(idx_to_userid[i])
+        fundids.append(idx_to_itemid[j])
+        scores.append(v)
+    return pd.DataFrame({'userid':uids,
+                        'fundid':fundids,
+                        'score':scores,
+                        'model':kind,
+                        'rank':0,
+                        'yyyymmdd':yyyymmdd})
+
 
 
 def arrange_predict_to_dataframe(predall_itemids, predall_rating,

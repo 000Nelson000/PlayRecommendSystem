@@ -101,8 +101,9 @@ class KNNmodel:
             sparsity = float(self.sim.nnz / self.inter.shape[1]**2) * 100
             print('similarity (cosine) matrix build (ibcf), \nsparsity of similarity: {:.2f} %'\
                   .format(sparsity))
-    
-    def _replace_purcashed_items(self,X):
+
+
+    def _replace_purcashed_items(self,X,remove=True):
         """replace items which user have already bought (self.inter), 
         and pick it up as another sp.matrix
 
@@ -121,7 +122,7 @@ class KNNmodel:
         data = X_coo.data
         idx = 0
         inter_coo = self.inter.tocoo()
-        ij = zip(inter_coo.row,inter_coo.col)
+        ij = zip(inter_coo.row, inter_coo.col)
         intersect_ij = set(ij)
 
         # data_pur = np.zeros(data.shape)
@@ -132,7 +133,8 @@ class KNNmodel:
                           total = len(X_coo.data)):
 
             if (i, j) in intersect_ij:
-                data[idx] = 0
+                if remove:
+                    data[idx] = 0
                 ## purchased 
                 data_pur.append(v)
                 row_pur.append(i)
@@ -244,12 +246,11 @@ class KNNmodel:
 
 
         print('{} rating matrix built...'.format(self.kind))
-        if remove:
-            print('\nremove purchased data in rating matrix...')
-            pred, pred_purchased= self._replace_purcashed_items(pred)
-            self.rating_pur = pred_purchased
-        if not remove:
-            pred = sp.csr_matrix(pred)
+        
+        print('\narrange purchased data in rating matrix...\nremove={}'.format(remove))
+        pred, pred_purchased= self._replace_purcashed_items(pred,remove)
+        self.rating_pur = pred_purchased
+        
         rows = pred.shape[0]
         cols = pred.shape[1]
         sparsity = float( pred.getnnz()/ (rows*cols) )*100
