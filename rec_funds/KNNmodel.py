@@ -49,8 +49,8 @@ class KNNmodel:
         similarities = ab.tocoo(copy=True)
         similarities.data /= (aa + bb - ab.data)
         del aa,bb,ab # large memory cost 
-#        similarities = similarities.astype('float32')
-        similarities.setdiag(0)
+        similarities = similarities.astype('float32')
+        # similarities.setdiag(0) ## 
         similarities = similarities.tocsr()
         similarities.eliminate_zeros()
         sparsity = float(similarities.nnz / mat.shape[0]**2) * 100
@@ -91,19 +91,29 @@ class KNNmodel:
         """calculate cosine similarity based on (ubcf/ibcf) and store it in self.sim"""
         if self.kind == 'ubcf':
             self.sim = cosine_similarity(self.inter,dense_output=False)
-            self.sim.setdiag(0)
+            # self.sim.setdiag(0) 
             sparsity = float(self.sim.nnz / self.inter.shape[0]**2) * 100
             print('similarity (cosine) matrix build (ubcf), \nsparsity of similarity: {:.2f} %'\
                   .format(sparsity))
         elif self.kind =='ibcf':
             self.sim = cosine_similarity(self.inter.T,dense_output=False)
-            self.sim.setdiag(0)
+            # self.sim.setdiag(0)
             sparsity = float(self.sim.nnz / self.inter.shape[1]**2) * 100
             print('similarity (cosine) matrix build (ibcf), \nsparsity of similarity: {:.2f} %'\
                   .format(sparsity))
     
     def _replace_purcashed_items(self,X):
-        """replace items which user have already bought
+        """replace items which user have already bought (self.inter), 
+        and pick it up as another sp.matrix
+
+        params
+        ======
+        X : spmartix,
+            predicted rating for all u-i
+
+        return
+        ======
+        (csr_matrix)  
         """
         X_coo = sp.coo_matrix(X)
         row = X_coo.row
@@ -114,14 +124,24 @@ class KNNmodel:
         ij = zip(inter_coo.row,inter_coo.col)
         intersect_ij = set(ij)
 
+        # data_pur = np.zeros(data.shape)
+        row_pur = []
+        col_pur = []
+        data_pur = []
         for i,j,v in tqdm(zip(X_coo.row,X_coo.col,X_coo.data),
                           total = len(X_coo.data)):
-            if (i,j) in intersect_ij:
-                data[idx] = 0
-            idx+=1
-        X_coo = sp.coo_matrix((data,(row,col)))
 
-        return X_coo.tocsr()
+            if (i, j) in intersect_ij:
+                data[idx] = 0
+                ## purchased 
+                data_pur.append(v)
+                row_pur.append(i)
+                col_pur.append(j)            
+            idx+=1
+
+        X_coo = sp.coo_matrix((data,(row,col)))
+        pur_coo = sp.coo_matrix((data_pur,(row_pur,col_pur)))
+        return X_coo.tocsr(), pur_coo.tocsr()
 
     def fit(self,topK=100,normalize=True,remove=False,user_features=None):
         """fit model
@@ -225,8 +245,9 @@ class KNNmodel:
 
         print('{} rating matrix built...'.format(self.kind))
         if remove:
-            print('\nhandling nan data...')
-            pred = self._replace_purcashed_items(pred)
+            print('\nremove purchased data in rating matrix...')
+            pred, pred_purchased= self._replace_purcashed_items(pred)
+            self.rating_pur = pred_purchased
         if not remove:
             pred = sp.csr_matrix(pred)
         rows = pred.shape[0]
@@ -237,7 +258,7 @@ class KNNmodel:
         print('sparsity of rating: {:.2f} %'.format(sparsity))
         print('save into *.rating attribute...')
         pred = sp.csr_matrix(pred)
-        self.rating = pred
+        self.rating = pred        
         self.topK = topK
 
 

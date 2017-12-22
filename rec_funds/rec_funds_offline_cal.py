@@ -635,9 +635,9 @@ if __name__ == '__main__':
     df_purchased = data['purchased_df']
 
     print('data load complete...')
-    # eval_result = model_eval(train, test, users_feats_sp,topN=10)
+    eval_result = model_eval(train, test, users_feats_sp,topN=10)
         
-    # save_df_to_msdb(con, eval_result, tablename='基金推薦_模型評估', data_append=True)
+    save_df_to_msdb(con, eval_result, tablename='基金推薦_模型評估', data_append=True)
     
     # ###### recommendation ######
     idx_to_itemid = data['idx_to_itemid']
