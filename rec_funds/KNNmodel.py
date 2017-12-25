@@ -141,8 +141,8 @@ class KNNmodel:
                 col_pur.append(j)            
             idx+=1
 
-        X_coo = sp.coo_matrix((data,(row,col)))
-        pur_coo = sp.coo_matrix((data_pur,(row_pur,col_pur)))
+        X_coo = sp.coo_matrix((data,(row,col)),shape=X_coo.shape)
+        pur_coo = sp.coo_matrix((data_pur,(row_pur,col_pur)),shape=X_coo.shape)
         return X_coo.tocsr(), pur_coo.tocsr()
 
     def fit(self,topK=100,normalize=True,remove=False,user_features=None):
@@ -231,18 +231,23 @@ class KNNmodel:
         elif self.kind == 'ubcf_fs':
             """built CF model based on -- feature selected ubcf """
             assert user_features.shape[0] == self.inter.shape[0]
-
+            
             inter_copy = self.inter.copy() # copy of interaction data
             user_features = user_features.A
-            for idx in range(user_features.shape[1]):                
+            for idx in range(user_features.shape[1]):
+                print('user feature idx:{}'.format(idx))
                 inter_temp = inter_copy.copy()
                 rows_zeros = np.where(user_features[:,idx])[0]
                 csr_rows_set_nz_to_val(inter_temp,rows_zeros, value=0) ## set to zero
                 model = KNNmodel(inter_temp,kind='ubcf')
                 model.jaccard_sim()
-                model.fit(topK=100)
+                model.fit(topK=100,remove=remove)
 
-                pred+= model.rating
+                pred += model.rating
+                if remove:                
+                    pred += model.rating_pur
+                
+                    
 
 
         print('{} rating matrix built...'.format(self.kind))
