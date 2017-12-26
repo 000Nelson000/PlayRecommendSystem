@@ -120,7 +120,7 @@ def load_data(con):
         map_ids, args=[idx_to_userid])
 
     return {
-        'purchased_df' : df_gt2,
+        'purchased_df': df_gt2,
         'purchased_ui': purchased_ui,
         'userid_to_idx': userid_to_idx,
         'idx_to_userid': idx_to_userid,
@@ -138,7 +138,7 @@ def load_data(con):
     }
 
 
-def model_eval(train, test, users_feats_sp,topN=10):
+def model_eval(train, test, users_feats_sp, topN=10):
     """評估以下模型在測試集準確度(`recall`)
     1. :ibcf : 以物品為基礎的相似度模型
     2. :ubcf : 以用戶為基礎的相似度模型
@@ -217,7 +217,7 @@ def model_eval(train, test, users_feats_sp,topN=10):
         ubcf:   {:^10.1f}%
         ubcf_fs:{:^10.1f}%
         --------------------------
-        '''.format(train.shape[0],train.shape[1],topN,
+        '''.format(train.shape[0], train.shape[1], topN,
                    recall_p * 100, recall_i * 100, recall_u * 100, recall_ufs * 100)
 
         f.write(time_elapse)
@@ -233,7 +233,7 @@ def model_eval(train, test, users_feats_sp,topN=10):
         'eval_time': time_lst,
         'num_users': train.shape[0],
         'num_funds': train.shape[1],
-        'topN' : topN,
+        'topN': topN,
         'date': now.strftime('%Y%m%d')
     })
 
@@ -259,7 +259,7 @@ def build_model(sp_data, kind, topK=100, users_feats_sp=None):
     model = KNNmodel(sp_data, kind=kind)
     if kind in ('ubcf', 'ibcf'):
         model.jaccard_sim()
-    model.fit(topK=topK, user_features=users_feats_sp, remove=True) ## 移除
+    model.fit(topK=topK, user_features=users_feats_sp, remove=True)  # 移除
     t2 = time.time()
     dt = int(t2 - t1)
     m, s = divmod(dt, 60)
@@ -271,7 +271,7 @@ def build_model(sp_data, kind, topK=100, users_feats_sp=None):
 
 
 def recommender_lists(
-        purchased_ui, idx_to_itemid, idx_to_userid, users_feats_sp,topN=10):
+        purchased_ui, idx_to_itemid, idx_to_userid, users_feats_sp, topN=10):
     """基於交易資料建立推薦清單
     params
     =====
@@ -323,14 +323,14 @@ def recommender_lists(
     sp_pur_rat_ufs = model_ufs.rating_pur
 
     rec_ibcf_pur_df = arrange_purchased_rating_to_df(
-        sp_pur_rat_i,idx_to_userid,idx_to_itemid,'ibcf')
+        sp_pur_rat_i, idx_to_userid, idx_to_itemid, 'ibcf')
     rec_ubcf_pur_df = arrange_purchased_rating_to_df(
-        sp_pur_rat_u,idx_to_userid,idx_to_itemid,'ubcf')
+        sp_pur_rat_u, idx_to_userid, idx_to_itemid, 'ubcf')
     rec_pop_pur_df = arrange_purchased_rating_to_df(
-        sp_pur_rat_p,idx_to_userid,idx_to_itemid,'popular')
+        sp_pur_rat_p, idx_to_userid, idx_to_itemid, 'popular')
     rec_ufs_pur_df = arrange_purchased_rating_to_df(
-        sp_pur_rat_ufs,idx_to_userid,idx_to_itemid,'ubcf_fs')
-    
+        sp_pur_rat_ufs, idx_to_userid, idx_to_itemid, 'ubcf_fs')
+
     ############# 推薦標的分數/清單(numpy array) ############
     predall_itemid_i, predall_rating_i = get_itemids_ratings_np(
         model_i, predall_i, idx_to_itemid)
@@ -343,7 +343,6 @@ def recommender_lists(
 
     predall_itemid_p, predall_rating_p = get_itemids_ratings_np(
         model_p, predall_p, idx_to_itemid)
-
 
     ############# 整理成 dataframe ############
 
@@ -364,7 +363,7 @@ def recommender_lists(
     df_rec_total['rank'] = df_rec_total.index + 1
     df_rec_total['yyyymmdd'] = yyyymmdd
     df_rec_total = pd.concat([df_rec_total, rec_ibcf_pur_df,
-                              rec_ubcf_pur_df, 
+                              rec_ubcf_pur_df,
                               rec_pop_pur_df,
                               rec_ufs_pur_df])
 
@@ -395,7 +394,7 @@ def recommender_lists(
 
         to dataframe : {:^5}
         '''.format(now_str, num_users, num_funds, topN,
-        dt_ibcf, dt_ubcf, dt_ufs, dt_pop, dt_arange_df)
+                   dt_ibcf, dt_ubcf, dt_ufs, dt_pop, dt_arange_df)
         f.write(messages)
 
     return df_rec_total
@@ -440,10 +439,11 @@ def get_itemids_ratings_np(model, predall, idx_to_itemid):
         :, :-model.topN - 1:-1]
     return predall_itemid, predall_rating
 
-def arrange_purchased_rating_to_df(sp_pur_rating, 
+
+def arrange_purchased_rating_to_df(sp_pur_rating,
                                    idx_to_userid,
-                                    idx_to_itemid,
-                                    kind):
+                                   idx_to_itemid,
+                                   kind):
     """arrange purchased u-i rating matrix (sp_csr_matrix) to dataframe
     params
     ======
@@ -456,7 +456,7 @@ def arrange_purchased_rating_to_df(sp_pur_rating,
     """
     now = datetime.datetime.now()
     yyyymmdd = now.strftime("%Y%m%d")
-    assert isinstance(sp_pur_rating,sp.csr_matrix), 'should be sp.csr_matrix'
+    assert isinstance(sp_pur_rating, sp.csr_matrix), 'should be sp.csr_matrix'
     rating_pur_coo = sp_pur_rating.tocoo()
     row = rating_pur_coo.row
     col = rating_pur_coo.col
@@ -465,17 +465,16 @@ def arrange_purchased_rating_to_df(sp_pur_rating,
     fundids = []
     scores = []
 
-    for i,j,v in zip(row,col,data):
+    for i, j, v in zip(row, col, data):
         uids.append(idx_to_userid[i])
         fundids.append(idx_to_itemid[j])
         scores.append(v)
-    return pd.DataFrame({'userid':uids,
-                        'fundid':fundids,
-                        'score':scores,
-                        'model':kind,
-                        'rank':0,
-                        'yyyymmdd':yyyymmdd})
-
+    return pd.DataFrame({'userid': uids,
+                         'fundid': fundids,
+                         'score': scores,
+                         'model': kind,
+                         'rank': 0,
+                         'yyyymmdd': yyyymmdd})
 
 
 def arrange_predict_to_dataframe(predall_itemids, predall_rating,
@@ -527,12 +526,13 @@ def save_df_to_msdb(con, df, tablename, data_append=True):
         fields = ','.join(['[' + e + ']' for e in k])
         row = [None if pd.isnull(e) else e for e in v]
         try:
-            cursor.execute(sql_insert.format(tablename, fields, num_quest), row)
+            cursor.execute(sql_insert.format(
+                tablename, fields, num_quest), row)
         except pypyodbc.DataError as err:
-            print('!!!ERROR!!!! data at idx:{} insert failed!!!\n,{}'.format(idx,err))
+            print('!!!ERROR!!!! data at idx:{} insert failed!!!\n,{}'.format(idx, err))
 
-        if (idx+1) % 1000 == 0 and idx !=0 :
-            print('rows {} inserted...'.format(idx+1))
+        if (idx + 1) % 1000 == 0 and idx != 0:
+            print('rows {} inserted...'.format(idx + 1))
 
     cursor.commit()
 
@@ -559,7 +559,7 @@ def get_features_given_uid(uid, df, funds_f):
     for fundid in purchased_fundids:
         try:
             user_features.update(funds_f.get(fundid))
-        except TypeError :
+        except TypeError:
             print('No fundid:{} in mma ...'.format(fundid))
             continue
 
@@ -589,7 +589,7 @@ def get_recommended_item_for_user(itemid, have_features, funds_f):
     except TypeError:
         print('No fundid:{} in mma'.format(itemid))
         return []
-    
+
 
 def built_items_features_lookup_table(df_item_features):
     '''establish items features look up table
@@ -622,6 +622,7 @@ def built_items_features_lookup_table(df_item_features):
         funds_f[iid] = i_feats_set
     return funds_f
 
+
 def reason_tags(df_purchased, df_recommend, df_item_features):
     """給每個推薦的基金推薦**原因**
 
@@ -647,13 +648,15 @@ def reason_tags(df_purchased, df_recommend, df_item_features):
     """
     #### establish items features look up table ######
     t0 = time.time()
-    funds_feat_lookup_dict = built_items_features_lookup_table(df_item_features)
+    funds_feat_lookup_dict = built_items_features_lookup_table(
+        df_item_features)
 
     ##### users have features ####
     users_have_features = {}
     all_uids = df_purchased['身分證字號'].unique()
     for uid in tqdm(all_uids):  # 50 iter/sec --- pretty slow !!!
-        users_have_features[uid] = get_features_given_uid(uid, df_purchased,funds_feat_lookup_dict)
+        users_have_features[uid] = get_features_given_uid(
+            uid, df_purchased, funds_feat_lookup_dict)
 
     def get_items_features(row):
         fundid = row['fundid']
@@ -661,16 +664,17 @@ def reason_tags(df_purchased, df_recommend, df_item_features):
         common_features_list = list(get_recommended_item_for_user(fundid,
                                                                   users_have_features[userid],
                                                                   funds_feat_lookup_dict)
-                                                                  )
+                                    )
         return ','.join(common_features_list)
-    
-    df_recommend['tag_features'] = df_recommend[['fundid','userid']].apply(get_items_features,axis=1)
-    
+
+    df_recommend['tag_features'] = df_recommend[[
+        'fundid', 'userid']].apply(get_items_features, axis=1)
+
     ## time cost ###
     t1 = time.time()
     dt = int(t1 - t0)
-    m,s = divmod(dt,60)
-    h,m = divmod(m, 60)
+    m, s = divmod(dt, 60)
+    h, m = divmod(m, 60)
     dt = "{}:{:02}:{:02}".format(h, m, s)  # h:m:s
 
     with open('build_recommender.log', 'a') as f:
@@ -695,23 +699,21 @@ if __name__ == '__main__':
     df_purchased = data['purchased_df']
 
     print('data load complete...')
-    eval_result = model_eval(train, test, users_feats_sp,topN=10)
-        
+    eval_result = model_eval(train, test, users_feats_sp, topN=10)
+
     save_df_to_msdb(con, eval_result, tablename='基金推薦_模型評估', data_append=True)
-    
+
     # ###### recommendation ######
     idx_to_itemid = data['idx_to_itemid']
     idx_to_userid = data['idx_to_userid']
     purchased_ui = data['purchased_ui']
-    
-    df_rec_tot = recommender_lists(
-        purchased_ui,idx_to_itemid,idx_to_userid,users_feats_sp,topN=10)
 
-    # ### tag_features 
+    df_rec_tot = recommender_lists(
+        purchased_ui, idx_to_itemid, idx_to_userid, users_feats_sp, topN=10)
+
+    # ### tag_features
     df_item_features = pd.read_sql("select * from 基金推薦_申購基金特徵", con)
-    df_rec_total = reason_tags(df_purchased,df_rec_tot, df_item_features)
-    
+    df_rec_total = reason_tags(df_purchased, df_rec_tot, df_item_features)
+
     save_df_to_msdb(con, df_rec_total,
                     tablename='基金推薦_推薦清單', data_append=False)
-
-    
