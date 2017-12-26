@@ -526,7 +526,11 @@ def save_df_to_msdb(con, df, tablename, data_append=True):
         k, v = list(zip(*row.to_dict().items()))
         fields = ','.join(['[' + e + ']' for e in k])
         row = [None if pd.isnull(e) else e for e in v]
-        cursor.execute(sql_insert.format(tablename, fields, num_quest), row)
+        try:
+            cursor.execute(sql_insert.format(tablename, fields, num_quest), row)
+        except pypyodbc.DataError as err:
+            print('!!!ERROR!!!! data at idx:{} insert failed!!!\n,{}'.format(idx,err))
+
         if (idx+1) % 1000 == 0 and idx !=0 :
             print('rows {} inserted...'.format(idx+1))
 
