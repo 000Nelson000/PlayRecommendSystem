@@ -72,3 +72,28 @@
         ubcf_fs:   28.5   %
         --------------------------
         
+*************** Date: 2017-12-28 11:18:59 *****************
+
+        evaluation time ...
+
+        --------------------------
+        ibcf   :  0:01:01  ,
+        ubcf   :  0:01:40  ,
+        ubcf_fs:  0:18:23  ,
+        popular:  0:00:06  
+        --------------------------
+        
+	***** model evaluation *****
+
+        numbers of users           :20607
+        numbers of funds           :2045 
+        numbers of recommendation  : 10  
+        
+        recall
+        --------------------------
+        popular:   20.2   %
+        ibcf:      25.6   %
+        ubcf:      29.6   %
+        ubcf_fs:   30.8   %
+        --------------------------
+        

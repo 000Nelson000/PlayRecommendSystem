@@ -102,3 +102,26 @@
         to dataframe : 0:02:23
                                         
         tag features : 0:08:09
+
+
+*************** Date: 2017-12-28 11:18:59 *****************
+
+        
+        
+        numbers of users           :20607
+        numbers of funds           :2045 
+        numbers of recommendation  : 10  
+
+        -----------------------------------
+        KNN model built time...
+
+        ibcf   : 0:01:02,
+        ubcf   : 0:01:44,
+        ubcf_fs: 0:19:07,
+        popular: 0:00:06
+        -----------------------------------
+        data post processing
+
+        to dataframe : 0:02:22
+                                        
+        tag features : 0:07:46
