@@ -684,7 +684,7 @@ def reason_tags(df_purchased, df_recommend, df_item_features):
 
     return df_recommend
 
-
+#%%
 if __name__ == '__main__':
     # pass
     # db connect
