@@ -22,7 +22,7 @@ import pandas as pd
 import time 
 #fundid_names_df.to_csv('./funds/fundid_to_name.csv',index=False)
 
-with open('./funds/sp_funds_datasets.pickle','rb') as f:
+with open('./funds-dataset/sp_funds_datasets.pickle','rb') as f:
     data = pickle.load(f)
     
 test = data['test']
@@ -33,7 +33,7 @@ userid_to_idx = data['userid_to_idx']
 idx_to_itemid = data['idx_to_itemid']
 itemid_to_idx = data['itemid_to_idx']
 
-fundid_names_df = pd.read_csv('./funds/fundid_to_name.csv',encoding='cp950')
+fundid_names_df = pd.read_csv('./funds-dataset/fundid_to_name.csv',encoding='cp950')
 fundid_to_names = {}
 
 for d in fundid_names_df.to_dict('records'):
